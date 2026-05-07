@@ -70,7 +70,7 @@ const seed = async () => {
       {
         name: "tag-10",
         content: "This is the tenth tag.",
-        desc: "The tenth tag in the database.",
+        desc: "The tenth tag in the databased.",
         userId: "123456789012345678",
         uses: 0,
       },
