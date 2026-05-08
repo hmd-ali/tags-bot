@@ -19,12 +19,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GHCR_PAT }}
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GHCR_PAT }}
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -53,6 +55,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GHCR_PAT }}
       - name: Copy docker-compose.yml to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -74,7 +78,7 @@ jobs:
           script: |
             set -e
             cd /opt/discord-bot
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             IMAGE_NAME=${{ env.IMAGE_NAME }} \
             DISCORD_TOKEN=${{ secrets.DISCORD_TOKEN }} \
             DISCORD_CLIENT_ID=${{ secrets.DISCORD_CLIENT_ID }} \
