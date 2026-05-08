@@ -73,11 +73,6 @@ jobs:
           envs: IMAGE_NAME,DISCORD_TOKEN,DISCORD_CLIENT_ID,MODERATOR_ROLE_ID
           script: |
             set -e
-            if ! command -v docker &> /dev/null; then
-              curl -fsSL https://get.docker.com | sh
-              sudo usermod -aG docker $USER
-              newgrp docker
-            fi
             cd /opt/discord-bot
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             IMAGE_NAME=${{ env.IMAGE_NAME }} \
