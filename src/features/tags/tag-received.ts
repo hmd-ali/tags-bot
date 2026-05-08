@@ -3,6 +3,7 @@ import { createEvent } from "@/common/events/create-event.js";
 import { TagsCache } from "@/cache/tags.js";
 import { prisma } from "@/db/prisma.js";
 import { getTagPrefix } from "@/util/tag-prefix.js";
+import { stripAllCode } from "@/util/strip-code.js";
 
 export const tagReceivedEvent = createEvent(
   {
@@ -13,7 +14,8 @@ export const tagReceivedEvent = createEvent(
     const tagRegex = new RegExp(
       `(?:^|\\s)${prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([a-zA-Z][\\w-]*)`,
     );
-    const match = message.content.match(tagRegex);
+    const stripped = stripAllCode(message.content);
+    const match = stripped.match(tagRegex);
     if (!match) return;
 
     const tagName = match[1];
