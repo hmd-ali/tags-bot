@@ -59,14 +59,17 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
+          port: 2222
           source: docker-compose.yml
           target: /opt/discord-bot
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
+          port: 2222
           envs: IMAGE_NAME,DISCORD_TOKEN,DISCORD_CLIENT_ID,MODERATOR_ROLE_ID
           script: |
             set -e
