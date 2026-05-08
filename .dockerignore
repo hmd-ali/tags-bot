@@ -7,4 +7,3 @@ dist
 .github
 README.md
 docker-compose.yml
-prisma.config.ts

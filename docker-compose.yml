@@ -4,10 +4,9 @@ services:
     container_name: discord-bot
     restart: unless-stopped
     environment:
-      DATABASE_URL: file:/app/data/db.sqlite
-      DISCORD_TOKEN: ${DISCORD_TOKEN}
-      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
-      MODERATOR_ROLE_ID: ${MODERATOR_ROLE_ID}
+      - DATABASE_URL=file:/app/data/db.sqlite
+    env_file:
+      - ./.env.runtime
     volumes:
       - bot-data:/app/data
     logging:
@@ -15,6 +14,17 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+  migrate:
+    image: ghcr.io/${IMAGE_NAME}:latest
+    environment:
+      - DATABASE_URL=file:/app/data/db.sqlite
+    env_file:
+      - ./.env.runtime
+    command: ["pnpm", "run", "migrate:deploy"]
+    restart: "no"
+    volumes:
+      - bot-data:/app/data
 
 volumes:
   bot-data:

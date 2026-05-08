@@ -13,7 +13,7 @@
     "check:fix": "biome check --write .",
     "deploy-commands": "tsx scripts/deploy-commands.ts",
     "typecheck": "tsc --noEmit",
-    "build": "rm -rf dist && NODE_ENV=production tsc --noEmit false --outDir dist",
+    "build": "rm -rf dist && NODE_ENV=production tsc --noEmit false --outDir dist && tsc-alias",
     "start": "node dist/src/index.js",
     "prisma:generate": "prisma generate",
     "migrate:deploy": "prisma migrate deploy"
@@ -28,6 +28,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^17.0.2",
     "prisma": "^7.8.0",
+    "tsc-alias": "^1.8.17",
     "typescript": "^6.0.3"
   },
   "dependencies": {
@@ -39,9 +40,9 @@
     "tsx": "^4.21.0"
   },
   "lint-staged": {
-		"*.{ts,js}": [
-			"biome format --write",
-			"biome lint --fix"
-		]
-	}
+    "*.{ts,js}": [
+      "biome format --write",
+      "biome lint --fix"
+    ]
+  }
 }
