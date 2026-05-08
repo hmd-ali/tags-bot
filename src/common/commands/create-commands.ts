@@ -8,7 +8,6 @@ import type {
 export const createSlashCommand = (command: {
   data: Omit<SlashCommand["data"], "type">;
   execute: SlashCommand["execute"];
-  buttonCommands?: SlashCommand["buttonCommands"];
 }): SlashCommand => {
   return {
     commandType: ApplicationCommandType.ChatInput,
@@ -17,7 +16,6 @@ export const createSlashCommand = (command: {
       type: ApplicationCommandType.ChatInput,
     },
     execute: command.execute,
-    buttonCommands: command.buttonCommands,
   };
 };
 

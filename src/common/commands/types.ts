@@ -28,9 +28,6 @@ export type SlashCommand = {
   commandType: ApplicationCommandType.ChatInput;
   data: RESTPostAPIChatInputApplicationCommandsJSONBody;
   execute: (interaction: ChatInputCommandInteraction) => Promise<void> | void;
-  buttonCommands?: Array<
-    (interaction: ButtonInteraction) => Promise<void> | void
-  >;
 };
 
 export type Command =
