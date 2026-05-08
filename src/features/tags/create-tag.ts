@@ -9,13 +9,14 @@ import {
 } from "discord.js";
 import { TagsCache } from "@/cache/tags.js";
 import { prisma } from "@/db/prisma.js";
+import { customId } from "@/util/custom-id.js";
 
 export const createTagCommandHandler = async (
   interaction: ChatInputCommandInteraction,
 ) => {
   const modal = new ModalBuilder()
+    .setCustomId(customId("create-tag", interaction.user.id, Date.now()))
     .setTitle("Create Tag")
-    .setCustomId("tags-create-modal")
     .addLabelComponents(
       new LabelBuilder()
         .setLabel("Name")
@@ -45,11 +46,13 @@ export const createTagCommandHandler = async (
             .setRequired(true),
         ),
     );
-
   await interaction.showModal(modal);
   try {
     const submittedInteraction = await interaction.awaitModalSubmit({
       time: 60_000,
+      filter: (i) =>
+        i.customId === modal.data.custom_id &&
+        i.user.id === interaction.user.id,
     });
     await submissionHandler(submittedInteraction);
   } catch (error) {
