@@ -64,7 +64,7 @@ export const buildListTagsComponents = (
   const tagLines = tags
     .map(
       (t, i) =>
-        `${i + offset + 1}) **${t.name}** • ${truncate(t.desc, 100)} ${t.uses > 0 ? `• Used **${t.uses}x**` : ""}`,
+        `${i + offset + 1}) **${t.name}** • ${truncate(t.desc, 120)} ${t.uses > 0 ? `• Used **${t.uses}x**` : ""}`,
     )
     .join("\n");
 
