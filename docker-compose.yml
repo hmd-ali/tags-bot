@@ -7,6 +7,7 @@ services:
       DATABASE_URL: file:/app/data/db.sqlite
       DISCORD_TOKEN: ${DISCORD_TOKEN}
       DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
+      MODERATOR_ROLE_ID: ${MODERATOR_ROLE_ID}
     volumes:
       - bot-data:/app/data
     logging:
