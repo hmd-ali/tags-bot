@@ -1,37 +1,32 @@
-import {
-	type ChatInputCommandInteraction,
-	GuildMember,
-	MessageFlags,
-} from "discord.js";
+import { type ChatInputCommandInteraction, MessageFlags } from "discord.js";
 import { prisma } from "@/db/prisma.js";
-import { env } from "@/env.js";
+import { ErrorMessages } from "@/error-messages/index.js";
+import {
+	basicErrorMessage,
+	basicMessage,
+} from "@/util/components/basic-message.js";
 import { setTagPrefix } from "@/util/tag-prefix.js";
+import { getCommandUser, isModerator, isServerOwner } from "@/util/user.js";
 
 export const changeTagsPrefix = async (
 	interaction: ChatInputCommandInteraction
 ) => {
-	const commandUser = interaction.member;
-	if (!(commandUser instanceof GuildMember)) {
-		await interaction.reply({
-			content: "An error occurred while verifying your permissions.",
-			flags: MessageFlags.Ephemeral,
+	const commandUser = getCommandUser(interaction);
+	await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+	if (commandUser === null) {
+		await interaction.editReply({
+			components: [ErrorMessages.User.UnableToVerifyPermissions],
+			flags: MessageFlags.IsComponentsV2,
 		});
 		return;
 	}
 
-	const moderatorRole = await commandUser.guild.roles.fetch(
-		env.roles.moderator
-	);
+	const isUserModerator = await isModerator(commandUser);
 
-	const isServerOwner = commandUser.guild.ownerId === commandUser.id;
-	const isModerator =
-		moderatorRole !== null &&
-		commandUser.roles.highest.position >= moderatorRole.position;
-
-	if (!isServerOwner && !isModerator) {
-		await interaction.reply({
-			content: "Only server owners and moderators can change the tag prefix.",
-			flags: MessageFlags.Ephemeral,
+	if (!isServerOwner(commandUser) && !isUserModerator) {
+		await interaction.editReply({
+			components: [ErrorMessages.Tags.MissingPermissions],
+			flags: MessageFlags.IsComponentsV2,
 		});
 		return;
 	}
@@ -46,13 +41,19 @@ export const changeTagsPrefix = async (
 		});
 		setTagPrefix(updated.value);
 
-		await interaction.reply({
-			content: `Tag prefix has been set to \`${updated.value}\`.`,
+		await interaction.editReply({
+			components: [
+				basicMessage(`Tag prefix has been set to \`${updated.value}\`.`),
+			],
+			flags: MessageFlags.IsComponentsV2,
 		});
-	} catch {
-		await interaction.reply({
-			content: "An error occurred while setting the tag prefix.",
-			flags: MessageFlags.Ephemeral,
+	} catch (error) {
+		console.error("Error updating tag prefix:", error);
+		await interaction.editReply({
+			components: [
+				basicErrorMessage("An error occurred while updating the tag prefix."),
+			],
+			flags: MessageFlags.IsComponentsV2,
 		});
 	}
 };

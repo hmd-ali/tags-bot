@@ -1,29 +1,28 @@
-import type { ChatInputCommandInteraction } from "discord.js";
-import { TagsCache } from "@/cache/tags.js";
-import { prisma } from "@/db/prisma.js";
+import { type ChatInputCommandInteraction, MessageFlags } from "discord.js";
+import { ErrorMessages } from "@/error-messages/index.js";
+import { basicMessage } from "@/util/components/basic-message.js";
+import { TagsManager } from "./tag.js";
 
 export const checkTagOwner = async (
 	interaction: ChatInputCommandInteraction
 ) => {
 	const name = interaction.options.getString("name", true);
-	await interaction.reply({
-		content: "Checking tag ownership...",
+	await interaction.deferReply();
+	await interaction.editReply({
+		components: [basicMessage(`Checking ownership of tag \`${name}\`...`)],
+		flags: MessageFlags.IsComponentsV2,
 	});
 
-	const tag =
-		TagsCache.get(name) ||
-		(await prisma.tag.findUnique({ where: { name: name } }));
-
+	const tag = await TagsManager.get(name);
 	if (tag === null) {
-		await interaction.reply({
-			content: `Tag \`${name}\` not found.`,
+		await interaction.editReply({
+			components: [ErrorMessages.Tags.TagNotFound(name)],
 		});
 		return null;
 	}
-	TagsCache.set(tag);
 	await interaction.editReply({
-		content: `Tag \`${name}\` is owned by <@${tag.userId}>.`,
+		components: [basicMessage(`Tag \`${name}\` is owned by <@${tag.userId}>.`)],
 		allowedMentions: { parse: [] },
 	});
-	return tag.userId;
+	return;
 };
