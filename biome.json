@@ -22,12 +22,12 @@
 				"useTemplate": "error"
 			},
 			"suspicious": {
-        "noExplicitAny": "warn",
-        "noArrayIndexKey": "off"
-      },
-      "correctness": {
-        "noUnusedVariables": "error"
-      }
+				"noExplicitAny": "warn",
+				"noArrayIndexKey": "off"
+			},
+			"correctness": {
+				"noUnusedVariables": "error"
+			}
 		}
 	},
 	"javascript": {
