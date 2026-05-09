@@ -4,6 +4,7 @@ import { TagsCache } from "@/cache/tags.js";
 import { getCommandUser, isModerator, isServerOwner } from "@/util/user.js";
 import { TagsManager } from "./tag.js";
 import { ErrorMessages } from "@/error-messages/index.js";
+import { basicMessage } from "@/util/components/basic-message.js";
 
 export const deleteTagCommandHandler = async (
   interaction: ChatInputCommandInteraction,
@@ -35,7 +36,6 @@ export const deleteTagCommandHandler = async (
   TagsCache.delete(name);
 
   await interaction.reply({
-    content: `Tag \`${name}\` has been deleted.`,
-    flags: MessageFlags.Ephemeral,
+    components: [basicMessage(`Tag \`${name}\` has been deleted.`)],
   });
 };
