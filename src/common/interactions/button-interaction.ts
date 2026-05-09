@@ -1,28 +1,28 @@
+import type { ButtonInteraction } from "discord.js";
 import { parseCustomId } from "@/util/custom-id.js";
-import { ButtonInteraction } from "discord.js";
 
 export type ButtonSubmitInteraction = {
-  commandName: string;
-  handler: (interaction: ButtonInteraction) => Promise<void> | void;
+	commandName: string;
+	handler: (interaction: ButtonInteraction) => Promise<void> | void;
 };
 
 export const buttonSubmitInteractions = new Map<
-  string,
-  ButtonSubmitInteraction
+	string,
+	ButtonSubmitInteraction
 >();
 
 export const registerButtonSubmitInteraction = (
-  interaction: ButtonSubmitInteraction,
+	interaction: ButtonSubmitInteraction
 ) => {
-  console.log(
-    `Registering button submit interaction: ${interaction.commandName}`,
-  );
-  buttonSubmitInteractions.set(interaction.commandName, interaction);
+	console.log(
+		`Registering button submit interaction: ${interaction.commandName}`
+	);
+	buttonSubmitInteractions.set(interaction.commandName, interaction);
 };
 
 export const handleButtonInteraction = async (
-  interaction: ButtonInteraction,
+	interaction: ButtonInteraction
 ): Promise<void> => {
-  const commandName = parseCustomId(interaction.customId)[0];
-  await buttonSubmitInteractions.get(commandName)?.handler(interaction);
+	const commandName = parseCustomId(interaction.customId)[0];
+	await buttonSubmitInteractions.get(commandName)?.handler(interaction);
 };

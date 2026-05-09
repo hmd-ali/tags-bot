@@ -1,3 +1,16 @@
 {
-  "js/ts.tsdk.path": "node_modules/typescript/lib"
+	"js/ts.tsdk.path": "node_modules/typescript/lib",
+	"editor.defaultFormatter": "biomejs.biome",
+	"prettier.enable": false,
+	"oxc.enable": false,
+	"editor.formatOnSave": true,
+	"editor.codeActionsOnSave": {
+		"source.fixAll.biome": "explicit"
+	},
+	"[typescript]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"[json]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	}
 }
