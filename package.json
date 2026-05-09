@@ -16,7 +16,8 @@
 		"build": "rm -rf dist && NODE_ENV=production tsc --noEmit false --outDir dist && tsc-alias",
 		"start": "node dist/src/index.js",
 		"prisma:generate": "prisma generate",
-		"migrate:deploy": "prisma migrate deploy"
+		"migrate:deploy": "prisma migrate deploy",
+		"prepare": "husky"
 	},
 	"keywords": [],
 	"author": "",
@@ -46,9 +47,8 @@
 		]
 	},
 	"lint-staged": {
-		"*.{ts,js}": [
-			"biome format --write",
-			"biome lint --fix"
+		"*.{js,ts,json}": [
+			"biome check --write --no-errors-on-unmatched"
 		]
 	}
 }
