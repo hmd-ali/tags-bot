@@ -1,4 +1,4 @@
-import type { ChatInputCommandInteraction, } from "discord.js";
+import type { ChatInputCommandInteraction } from "discord.js";
 import { TagsCache } from "@/cache/tags.js";
 import { prisma } from "@/db/prisma.js";
 import { ErrorMessages } from "@/error-messages/index.js";
