@@ -7,9 +7,13 @@ import {
 	TextInputBuilder,
 	TextInputStyle,
 } from "discord.js";
-import { TagsCache } from "@/cache/tags.js";
-import { prisma } from "@/db/prisma.js";
+import { ErrorMessages } from "@/error-messages/index.js";
+import {
+	basicErrorMessage,
+	basicMessage,
+} from "@/util/components/basic-message.js";
 import { customId } from "@/util/custom-id.js";
+import { TagsManager } from "./tag.js";
 
 export const createTagCommandHandler = async (
 	interaction: ChatInputCommandInteraction
@@ -67,34 +71,29 @@ const submissionHandler = async (interaction: ModalSubmitInteraction) => {
 
 	const userId = interaction.user.id;
 	try {
-		const existingTag =
-			TagsCache.get(name) || (await prisma.tag.findUnique({ where: { name } }));
-		if (existingTag) {
+		const existingTag = await TagsManager.get(name);
+		if (existingTag !== null) {
 			await interaction.reply({
-				content: `A tag with the name \`${name}\` already exists. Please choose a different name.`,
+				components: [ErrorMessages.Tags.TagAlreadyExists(name)],
 				flags: MessageFlags.Ephemeral,
 			});
 			return;
 		}
-		const tag = await prisma.tag.create({
-			data: {
-				name,
-				content,
-				userId,
-				desc,
-			},
-		});
-		TagsCache.set(tag);
+		const tag = await TagsManager.create({ name, content, desc, userId });
 
 		await interaction.reply({
-			content: `Tag created with name: \`${name}\`.`,
-			flags: MessageFlags.Ephemeral,
+			components: [basicMessage(`Tag created with name: \`${tag.name}\`.`)],
+			flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
 		});
 	} catch (error) {
 		console.error(error);
-		await interaction.reply({
-			content: "An error occurred while creating the tag.",
-			flags: MessageFlags.Ephemeral,
-		});
+		if (!interaction.replied) {
+			await interaction.reply({
+				components: [
+					basicErrorMessage("An error occurred while creating the tag."),
+				],
+				flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
+			});
+		}
 	}
 };
