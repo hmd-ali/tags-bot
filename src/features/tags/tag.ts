@@ -19,6 +19,15 @@ export const TagsManager = {
 		TagsCache.set(createdTag);
 		return createdTag;
 	},
+	update: async (name: string, data: Partial<TagCreateInput>) => {
+		const updatedTag = await prisma.tag.update({
+			where: { name },
+			data,
+		});
+		TagsCache.delete(name);
+		TagsCache.set(updatedTag);
+		return updatedTag;
+	},
 	delete: async (name: string) => {
 		try {
 			const deleted = await prisma.tag.deleteMany({ where: { name } });
