@@ -3,10 +3,13 @@ import {
 	LabelBuilder,
 	MessageFlags,
 	ModalBuilder,
-	type ModalSubmitInteraction,
 	TextInputBuilder,
 	TextInputStyle,
 } from "discord.js";
+import {
+	type ModalSubmitInteraction,
+	registerModalSubmitInteraction,
+} from "@/common/interactions/modal-interaction.js";
 import { ErrorMessages } from "@/error-messages/index.js";
 import {
 	basicErrorMessage,
@@ -51,49 +54,42 @@ export const createTagCommandHandler = async (
 				)
 		);
 	await interaction.showModal(modal);
-	try {
-		const submittedInteraction = await interaction.awaitModalSubmit({
-			time: 60_000,
-			filter: (i) =>
-				i.customId === modal.data.custom_id &&
-				i.user.id === interaction.user.id,
-		});
-		await submissionHandler(submittedInteraction);
-	} catch (error) {
-		console.error(error);
-	}
 };
 
-const submissionHandler = async (interaction: ModalSubmitInteraction) => {
-	const name = interaction.fields.getTextInputValue("name");
-	const content = interaction.fields.getTextInputValue("content");
-	const desc = interaction.fields.getTextInputValue("desc");
+const submissionHandler: ModalSubmitInteraction = {
+	commandName: "create-tag",
+	handler: async (interaction) => {
+		const name = interaction.fields.getTextInputValue("name");
+		const content = interaction.fields.getTextInputValue("content");
+		const desc = interaction.fields.getTextInputValue("desc");
 
-	const userId = interaction.user.id;
-	try {
-		const existingTag = await TagsManager.get(name);
-		if (existingTag !== null) {
-			await interaction.reply({
-				components: [ErrorMessages.Tags.TagAlreadyExists(name)],
-				flags: MessageFlags.Ephemeral,
-			});
-			return;
-		}
-		const tag = await TagsManager.create({ name, content, desc, userId });
+		const userId = interaction.user.id;
+		try {
+			const existingTag = await TagsManager.get(name);
+			if (existingTag !== null) {
+				await interaction.reply({
+					components: [ErrorMessages.Tags.TagAlreadyExists(name)],
+					flags: MessageFlags.Ephemeral,
+				});
+				return;
+			}
+			const tag = await TagsManager.create({ name, content, desc, userId });
 
-		await interaction.reply({
-			components: [basicMessage(`Tag created with name: \`${tag.name}\`.`)],
-			flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
-		});
-	} catch (error) {
-		console.error(error);
-		if (!interaction.replied) {
 			await interaction.reply({
-				components: [
-					basicErrorMessage("An error occurred while creating the tag."),
-				],
+				components: [basicMessage(`Tag created with name: \`${tag.name}\`.`)],
 				flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
 			});
+		} catch (error) {
+			console.error(error);
+			if (!interaction.replied) {
+				await interaction.reply({
+					components: [
+						basicErrorMessage("An error occurred while creating the tag."),
+					],
+					flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
+				});
+			}
 		}
-	}
+	},
 };
+registerModalSubmitInteraction(submissionHandler);
