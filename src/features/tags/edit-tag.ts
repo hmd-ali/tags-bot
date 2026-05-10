@@ -16,7 +16,8 @@ import {
 	basicMessage,
 } from "@/util/components/basic-message.js";
 import { customId, parseCustomId } from "@/util/custom-id.js";
-import { getCommandUser, isModerator, isServerOwner } from "@/util/user.js";
+import { getCommandUser } from "@/util/user.js";
+import { canAccessTags, canModifyTag } from "./permissions.js";
 import { TagsManager } from "./tag.js";
 
 const BASE_NAME = "tags-edit";
@@ -25,9 +26,10 @@ export const editTagCommandHandler = async (
 	interaction: ChatInputCommandInteraction
 ) => {
 	const commandUser = getCommandUser(interaction);
-	if (commandUser === null) {
+
+	if (!canAccessTags(commandUser)) {
 		await interaction.reply({
-			components: [ErrorMessages.User.UnableToVerifyPermissions],
+			components: [ErrorMessages.Tags.MissingRole],
 			flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
 		});
 		return;
@@ -44,10 +46,7 @@ export const editTagCommandHandler = async (
 		return;
 	}
 
-	const isTagOwner = tag.userId === commandUser.id;
-	const isUserModerator = await isModerator(commandUser);
-
-	if (!isServerOwner(commandUser) && !isUserModerator && !isTagOwner) {
+	if (!canModifyTag(commandUser, tag.userId)) {
 		await interaction.reply({
 			components: [ErrorMessages.Tags.OwnershipRequired],
 			flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
@@ -97,10 +96,20 @@ export const editTagCommandHandler = async (
 const modalHandler: ModalSubmitInteraction = {
 	commandName: BASE_NAME,
 	handler: async (interaction) => {
+		const commandUser = getCommandUser(interaction);
 		const [_, tagName] = parseCustomId(interaction.customId);
 		const name = interaction.fields.getTextInputValue("name");
 		const content = interaction.fields.getTextInputValue("content");
 		const desc = interaction.fields.getTextInputValue("desc");
+
+		const tag = await TagsManager.get(tagName);
+		if (tag === null || !canModifyTag(commandUser, tag.userId)) {
+			await interaction.reply({
+				components: [ErrorMessages.Tags.OwnershipRequired],
+				flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
+			});
+			return;
+		}
 
 		try {
 			await TagsManager.update(tagName, {

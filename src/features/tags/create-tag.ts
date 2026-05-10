@@ -16,11 +16,22 @@ import {
 	basicMessage,
 } from "@/util/components/basic-message.js";
 import { customId } from "@/util/custom-id.js";
+import { getCommandUser } from "@/util/user.js";
+import { canAccessTags } from "./permissions.js";
 import { TagsManager } from "./tag.js";
 
 export const createTagCommandHandler = async (
 	interaction: ChatInputCommandInteraction
 ) => {
+	const commandUser = getCommandUser(interaction);
+	if (!canAccessTags(commandUser)) {
+		await interaction.reply({
+			components: [ErrorMessages.Tags.MissingRole],
+			flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
+		});
+		return;
+	}
+
 	const modal = new ModalBuilder()
 		.setCustomId(customId("create-tag", interaction.user.id, Date.now()))
 		.setTitle("Create Tag")
@@ -59,6 +70,15 @@ export const createTagCommandHandler = async (
 const submissionHandler: ModalSubmitInteraction = {
 	commandName: "create-tag",
 	handler: async (interaction) => {
+		const commandUser = getCommandUser(interaction);
+		if (!canAccessTags(commandUser)) {
+			await interaction.reply({
+				components: [ErrorMessages.Tags.MissingRole],
+				flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
+			});
+			return;
+		}
+
 		const name = interaction.fields.getTextInputValue("name");
 		const content = interaction.fields.getTextInputValue("content");
 		const desc = interaction.fields.getTextInputValue("desc");
