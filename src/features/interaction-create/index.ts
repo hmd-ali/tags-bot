@@ -1,6 +1,7 @@
 import { ApplicationCommandType, Events } from "discord.js";
 import { commands } from "@/common/commands/index.js";
 import { createEvent } from "@/common/events/create-event.js";
+import { handleAutoCompleteInteraction } from "@/common/interactions/autocomplete-interaction.js";
 import { handleButtonInteraction } from "@/common/interactions/button-interaction.js";
 import { handleModalInteraction } from "@/common/interactions/modal-interaction.js";
 
@@ -22,6 +23,14 @@ export const interactionCreateEvent = createEvent(
 				`Received modal submit interaction with custom ID: ${interaction.customId}`
 			);
 			await handleModalInteraction(interaction);
+			return;
+		}
+
+		if (interaction.isAutocomplete()) {
+			console.log(
+				`Received autocomplete interaction with custom ID: ${interaction.commandName}`
+			);
+			await handleAutoCompleteInteraction(interaction);
 			return;
 		}
 

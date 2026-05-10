@@ -1,75 +1,73 @@
 import {
 	type ChatInputCommandInteraction,
-	GuildMember,
 	LabelBuilder,
 	MessageFlags,
 	ModalBuilder,
-	type ModalSubmitInteraction,
 	TextInputBuilder,
 	TextInputStyle,
 } from "discord.js";
-import { TagsCache } from "@/cache/tags.js";
-import { prisma } from "@/db/prisma.js";
-import { env } from "@/env.js";
+import {
+	type ModalSubmitInteraction,
+	registerModalSubmitInteraction,
+} from "@/common/interactions/modal-interaction.js";
+import { ErrorMessages } from "@/error-messages/index.js";
+import {
+	basicErrorMessage,
+	basicMessage,
+} from "@/util/components/basic-message.js";
+import { customId, parseCustomId } from "@/util/custom-id.js";
+import { getCommandUser, isModerator, isServerOwner } from "@/util/user.js";
+import { TagsManager } from "./tag.js";
+
+const BASE_NAME = "tags-edit";
 
 export const editTagCommandHandler = async (
 	interaction: ChatInputCommandInteraction
 ) => {
-	const commandUser = interaction.member;
-	if (!(commandUser instanceof GuildMember)) {
+	const commandUser = getCommandUser(interaction);
+	if (commandUser === null) {
 		await interaction.reply({
-			content: "An error occurred while verifying your permissions.",
-			flags: MessageFlags.Ephemeral,
+			components: [ErrorMessages.User.UnableToVerifyPermissions],
+			flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
 		});
 		return;
 	}
 
-	const tagName = interaction.options.getString("name", true);
+	const name = interaction.options.getString("name", true);
 
-	const tag =
-		TagsCache.get(tagName) ||
-		(await prisma.tag.findUnique({ where: { name: tagName } }));
-
+	const tag = await TagsManager.get(name);
 	if (tag === null) {
 		await interaction.reply({
-			content: `Tag \`${tagName}\` not found.`,
-			flags: MessageFlags.Ephemeral,
+			components: [ErrorMessages.Tags.TagNotFound(name)],
+			flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
 		});
 		return;
 	}
-	TagsCache.set(tag);
 
-	const moderatorRole = await commandUser.guild.roles.fetch(
-		env.roles.moderator
-	);
-
-	const isServerOwner = commandUser.guild.ownerId === commandUser.id;
-	const isModerator =
-		moderatorRole !== null &&
-		commandUser.roles.highest.position >= moderatorRole.position;
 	const isTagOwner = tag.userId === commandUser.id;
+	const isUserModerator = await isModerator(commandUser);
 
-	if (!isServerOwner && !isModerator && !isTagOwner) {
+	if (!isServerOwner(commandUser) && !isUserModerator && !isTagOwner) {
 		await interaction.reply({
-			content: `You do not own the tag \`${tagName}\`. Only the owner and moderators can edit the tag.`,
-			flags: MessageFlags.Ephemeral,
+			components: [ErrorMessages.Tags.OwnershipRequired],
+			flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
 		});
 		return;
 	}
 
 	const modal = new ModalBuilder()
-		.setTitle(`Edit Tag: ${tagName}`)
-		.setCustomId(`tags-edit-modal-${tagName}`)
+		.setTitle(`Edit Tag: ${name}`)
+		.setCustomId(customId(BASE_NAME, name))
 		.addLabelComponents(
 			new LabelBuilder()
-				.setLabel("Content")
-				.setDescription("The new content of the tag")
+				.setLabel("Name")
+				.setDescription("The name of the tag")
 				.setTextInputComponent(
 					new TextInputBuilder()
-						.setCustomId("content")
-						.setStyle(TextInputStyle.Paragraph)
+						.setCustomId("name")
+						.setStyle(TextInputStyle.Short)
 						.setRequired(true)
-						.setValue(tag.content)
+						.setValue(tag.name)
 				),
 			new LabelBuilder()
 				.setLabel("Short Description")
@@ -80,39 +78,57 @@ export const editTagCommandHandler = async (
 						.setStyle(TextInputStyle.Short)
 						.setRequired(true)
 						.setValue(tag.desc)
+				),
+			new LabelBuilder()
+				.setLabel("Content")
+				.setDescription("The new content of the tag")
+				.setTextInputComponent(
+					new TextInputBuilder()
+						.setCustomId("content")
+						.setStyle(TextInputStyle.Paragraph)
+						.setRequired(true)
+						.setValue(tag.content)
 				)
 		);
 
 	await interaction.showModal(modal);
-	const submitted = await interaction.awaitModalSubmit({
-		time: 60_000,
-	});
-
-	await modalHandler(submitted);
 };
 
-const modalHandler = async (interaction: ModalSubmitInteraction) => {
-	const tagName = interaction.customId.replace("tags-edit-modal-", "");
-	const newContent = interaction.fields.getTextInputValue("content");
-	const newDesc = interaction.fields.getTextInputValue("desc");
+const modalHandler: ModalSubmitInteraction = {
+	commandName: BASE_NAME,
+	handler: async (interaction) => {
+		const [_, tagName] = parseCustomId(interaction.customId);
+		const name = interaction.fields.getTextInputValue("name");
+		const content = interaction.fields.getTextInputValue("content");
+		const desc = interaction.fields.getTextInputValue("desc");
 
-	try {
-		const updatedTag = await prisma.tag.update({
-			where: { name: tagName },
-			data: { content: newContent, desc: newDesc },
-		});
-		TagsCache.set(updatedTag);
+		try {
+			await TagsManager.update(tagName, {
+				name,
+				content,
+				desc,
+			});
 
-		await interaction.reply({
-			content: `Tag \`${tagName}\` has been updated.`,
-			flags: MessageFlags.Ephemeral,
-		});
-	} catch (error) {
-		console.error(error);
-		await interaction.reply({
-			content: `Failed to update tag \`${tagName}\`. It may have been deleted.`,
-			flags: MessageFlags.Ephemeral,
-		});
-		TagsCache.delete(tagName);
-	}
+			const message =
+				tagName === name
+					? `Tag \`${name}\` has been updated.`
+					: `Tag \`${tagName}\` has been updated and renamed to \`${name}\`.`;
+
+			await interaction.reply({
+				components: [basicMessage(message)],
+				flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
+			});
+		} catch (error) {
+			console.error(error);
+			await interaction.reply({
+				components: [
+					basicErrorMessage(
+						`Failed to update tag \`${tagName}\`. It may have been deleted.`
+					),
+				],
+				flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
+			});
+		}
+	},
 };
+registerModalSubmitInteraction(modalHandler);

@@ -1,5 +1,11 @@
 import { ApplicationCommandOptionType } from "discord.js";
 import { createSlashCommand } from "@/common/commands/create-commands.js";
+import {
+	type AutoCompleteSubmitInteraction,
+	registerAutocompleteInteraction,
+} from "@/common/interactions/autocomplete-interaction.js";
+import { prisma } from "@/db/prisma.js";
+import { getCommandUser, isModerator, isServerOwner } from "@/util/user.js";
 import { changeTagsPrefix } from "./change-prefix.js";
 import { checkTagOwner } from "./check-owner.js";
 import { createTagCommandHandler } from "./create-tag.js";
@@ -29,6 +35,7 @@ export const tagCommand = createSlashCommand({
 						type: ApplicationCommandOptionType.String,
 						description: "The name of the tag to edit",
 						required: true,
+						autocomplete: true,
 					},
 				],
 			},
@@ -55,6 +62,7 @@ export const tagCommand = createSlashCommand({
 						type: ApplicationCommandOptionType.String,
 						description: "The name of the tag to delete",
 						required: true,
+						autocomplete: true,
 					},
 				],
 			},
@@ -68,6 +76,7 @@ export const tagCommand = createSlashCommand({
 						type: ApplicationCommandOptionType.String,
 						description: "The name of the tag to check ownership for",
 						required: true,
+						autocomplete: true,
 					},
 				],
 			},
@@ -81,6 +90,7 @@ export const tagCommand = createSlashCommand({
 						type: ApplicationCommandOptionType.String,
 						description: "The name of the tag to transfer ownership of",
 						required: true,
+						autocomplete: true,
 					},
 					{
 						name: "new_owner",
@@ -130,3 +140,36 @@ export const tagCommand = createSlashCommand({
 		return;
 	},
 });
+
+const autoCompleteHandler: AutoCompleteSubmitInteraction = {
+	commandName: "tags",
+	handler: async (interaction) => {
+		const focusedOption = interaction.options.getFocused(true);
+		if (focusedOption.name !== "name") {
+			return;
+		}
+		const showOwnTags = ["edit", "delete", "transfer"].includes(
+			interaction.options.getSubcommand()
+		);
+		const input = focusedOption.value;
+		const commandUser = getCommandUser(interaction);
+		const allTags = await prisma.tag.findMany({
+			where: {
+				name: { contains: input },
+				userId: showOwnTags
+					? isServerOwner(commandUser) || isModerator(commandUser)
+						? undefined
+						: commandUser.id
+					: undefined,
+			},
+			take: 25,
+		});
+		const choices = allTags.map((tag) => ({
+			name: tag.name,
+			value: tag.name,
+		}));
+
+		await interaction.respond(choices);
+	},
+};
+registerAutocompleteInteraction(autoCompleteHandler);
