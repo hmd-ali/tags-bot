@@ -2,6 +2,7 @@ import { ApplicationCommandType, Events } from "discord.js";
 import { commands } from "@/common/commands/index.js";
 import { createEvent } from "@/common/events/create-event.js";
 import { handleButtonInteraction } from "@/common/interactions/button-interaction.js";
+import { handleModalInteraction } from "@/common/interactions/modal-interaction.js";
 
 export const interactionCreateEvent = createEvent(
 	{
@@ -13,6 +14,14 @@ export const interactionCreateEvent = createEvent(
 				`Received button interaction with custom ID: ${interaction.customId}`
 			);
 			await handleButtonInteraction(interaction);
+			return;
+		}
+
+		if (interaction.isModalSubmit()) {
+			console.log(
+				`Received modal submit interaction with custom ID: ${interaction.customId}`
+			);
+			await handleModalInteraction(interaction);
 			return;
 		}
 

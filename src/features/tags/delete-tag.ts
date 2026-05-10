@@ -1,8 +1,9 @@
-import type { ChatInputCommandInteraction } from "discord.js";
-import { TagsCache } from "@/cache/tags.js";
-import { prisma } from "@/db/prisma.js";
+import { type ChatInputCommandInteraction, MessageFlags } from "discord.js";
 import { ErrorMessages } from "@/error-messages/index.js";
-import { basicMessage } from "@/util/components/basic-message.js";
+import {
+	basicErrorMessage,
+	basicMessage,
+} from "@/util/components/basic-message.js";
 import { getCommandUser, isModerator, isServerOwner } from "@/util/user.js";
 import { TagsManager } from "./tag.js";
 
@@ -13,12 +14,19 @@ export const deleteTagCommandHandler = async (
 
 	const commandUser = getCommandUser(interaction);
 	if (commandUser === null) {
-		await interaction.reply(ErrorMessages.User.UnableToVerifyPermissions);
+		await interaction.reply({
+			components: [ErrorMessages.User.UnableToVerifyPermissions],
+			flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
+		});
 		return;
 	}
+	await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 	const tag = await TagsManager.get(name);
 	if (tag === null) {
-		await interaction.reply(ErrorMessages.Tags.TagNotFound(name));
+		await interaction.editReply({
+			components: [ErrorMessages.Tags.TagNotFound(name)],
+			flags: MessageFlags.IsComponentsV2,
+		});
 		return;
 	}
 
@@ -26,16 +34,28 @@ export const deleteTagCommandHandler = async (
 	const isUserModerator = await isModerator(commandUser);
 
 	if (!isServerOwner(commandUser) && !isUserModerator && !isTagOwner) {
-		await interaction.reply(ErrorMessages.Tags.OwnershipRequired);
+		await interaction.editReply({
+			components: [ErrorMessages.Tags.OwnershipRequired],
+			flags: MessageFlags.IsComponentsV2,
+		});
 		return;
 	}
 
-	await prisma.tag.delete({
-		where: { name },
-	});
-	TagsCache.delete(name);
-
-	await interaction.reply({
-		components: [basicMessage(`Tag \`${name}\` has been deleted.`)],
-	});
+	try {
+		await TagsManager.delete(name);
+		await interaction.editReply({
+			components: [basicMessage(`Tag \`${name}\` has been deleted.`)],
+			flags: MessageFlags.IsComponentsV2,
+		});
+	} catch (error) {
+		console.error("Error deleting tag:", error);
+		if (!interaction.replied) {
+			await interaction.editReply({
+				components: [
+					basicErrorMessage("An error occurred while deleting the tag."),
+				],
+				flags: MessageFlags.IsComponentsV2,
+			});
+		}
+	}
 };

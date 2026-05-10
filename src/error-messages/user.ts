@@ -1,22 +1,8 @@
-import {
-	Colors,
-	ContainerBuilder,
-	type InteractionReplyOptions,
-	MessageFlags,
-	TextDisplayBuilder,
-} from "discord.js";
+import { basicErrorMessage } from "@/util/components/basic-message.js";
+import type { ErrorMessage } from "./index.js";
 
 export const User = {
-	UnableToVerifyPermissions: {
-		components: [
-			new ContainerBuilder()
-				.setAccentColor(Colors.Red)
-				.addTextDisplayComponents(
-					new TextDisplayBuilder().setContent(
-						"An error occurred while verifying your permissions."
-					)
-				),
-		],
-		flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
-	} satisfies InteractionReplyOptions,
-};
+	UnableToVerifyPermissions: basicErrorMessage(
+		"An error occurred while verifying your permissions."
+	),
+} satisfies Record<string, ErrorMessage>;

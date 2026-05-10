@@ -20,7 +20,14 @@ export const TagsManager = {
 		return createdTag;
 	},
 	delete: async (name: string) => {
-		await prisma.tag.delete({ where: { name } });
-		TagsCache.delete(name);
+		try {
+			const deleted = await prisma.tag.deleteMany({ where: { name } });
+			if (deleted.count > 0) {
+				TagsCache.delete(name);
+			}
+		} catch (error) {
+			console.error("Error deleting tag from database:", error);
+			throw error;
+		}
 	},
 };
