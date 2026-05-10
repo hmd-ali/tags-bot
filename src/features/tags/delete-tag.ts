@@ -4,7 +4,8 @@ import {
 	basicErrorMessage,
 	basicMessage,
 } from "@/util/components/basic-message.js";
-import { getCommandUser, isModerator, isServerOwner } from "@/util/user.js";
+import { getCommandUser } from "@/util/user.js";
+import { canAccessTags, canModifyTag } from "./permissions.js";
 import { TagsManager } from "./tag.js";
 
 export const deleteTagCommandHandler = async (
@@ -13,13 +14,15 @@ export const deleteTagCommandHandler = async (
 	const name = interaction.options.getString("name", true);
 
 	const commandUser = getCommandUser(interaction);
-	if (commandUser === null) {
+
+	if (!canAccessTags(commandUser)) {
 		await interaction.reply({
-			components: [ErrorMessages.User.UnableToVerifyPermissions],
+			components: [ErrorMessages.Tags.MissingRole],
 			flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
 		});
 		return;
 	}
+
 	await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 	const tag = await TagsManager.get(name);
 	if (tag === null) {
@@ -30,10 +33,7 @@ export const deleteTagCommandHandler = async (
 		return;
 	}
 
-	const isTagOwner = tag.userId === commandUser.id;
-	const isUserModerator = await isModerator(commandUser);
-
-	if (!isServerOwner(commandUser) && !isUserModerator && !isTagOwner) {
+	if (!canModifyTag(commandUser, tag.userId)) {
 		await interaction.editReply({
 			components: [ErrorMessages.Tags.OwnershipRequired],
 			flags: MessageFlags.IsComponentsV2,

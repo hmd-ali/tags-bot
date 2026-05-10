@@ -5,25 +5,17 @@ import {
 	basicErrorMessage,
 	basicMessage,
 } from "@/util/components/basic-message.js";
+import { isStaff } from "@/util/permissions.js";
 import { setTagPrefix } from "@/util/tag-prefix.js";
-import { getCommandUser, isModerator, isServerOwner } from "@/util/user.js";
+import { getCommandUser } from "@/util/user.js";
 
 export const changeTagsPrefix = async (
 	interaction: ChatInputCommandInteraction
 ) => {
 	const commandUser = getCommandUser(interaction);
 	await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-	if (commandUser === null) {
-		await interaction.editReply({
-			components: [ErrorMessages.User.UnableToVerifyPermissions],
-			flags: MessageFlags.IsComponentsV2,
-		});
-		return;
-	}
 
-	const isUserModerator = await isModerator(commandUser);
-
-	if (!isServerOwner(commandUser) && !isUserModerator) {
+	if (!isStaff(commandUser)) {
 		await interaction.editReply({
 			components: [ErrorMessages.Tags.MissingPermissions],
 			flags: MessageFlags.IsComponentsV2,

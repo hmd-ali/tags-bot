@@ -12,6 +12,7 @@ export const env = {
 	},
 	roles: {
 		moderator: loadString("MODERATOR_ROLE_ID"),
+		tagAccess: loadString("TAG_ACCESS_ROLE_ID"),
 	},
 };
 

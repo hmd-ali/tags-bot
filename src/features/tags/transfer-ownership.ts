@@ -1,79 +1,80 @@
+import { type ChatInputCommandInteraction, MessageFlags } from "discord.js";
+import { ErrorMessages } from "@/error-messages/index.js";
 import {
-	type ChatInputCommandInteraction,
-	GuildMember,
-	MessageFlags,
-} from "discord.js";
-import { TagsCache } from "@/cache/tags.js";
-import { prisma } from "@/db/prisma.js";
-import { env } from "@/env.js";
+	basicErrorMessage,
+	basicMessage,
+} from "@/util/components/basic-message.js";
+import { getCommandUser } from "@/util/user.js";
+import { canAccessTags, canModifyTag } from "./permissions.js";
+import { TagsManager } from "./tag.js";
 
 export const transferTagOwnership = async (
 	interaction: ChatInputCommandInteraction
 ) => {
 	const tagName = interaction.options.getString("name", true);
 	const newOwner = interaction.options.getUser("new_owner", true);
-	const commandUser = interaction.member;
-	if (!(commandUser instanceof GuildMember)) {
-		await interaction.reply({
-			content: "An error occurred while verifying your permissions.",
-			flags: MessageFlags.Ephemeral,
-		});
-		return;
-	}
-	const tag =
-		TagsCache.get(tagName) ||
-		(await prisma.tag.findUnique({ where: { name: tagName } }));
-	if (!tag) {
-		await interaction.reply({
-			content: `Tag \`${tagName}\` not found.`,
-			flags: MessageFlags.Ephemeral,
-		});
-		return;
-	}
-	const moderatorRole = await commandUser.guild.roles.fetch(
-		env.roles.moderator
-	);
+	const commandUser = getCommandUser(interaction);
 
-	const isServerOwner = commandUser.guild.ownerId === commandUser.id;
-	const isModerator =
-		moderatorRole !== null &&
-		commandUser.roles.highest.position >= moderatorRole.position;
-	const isTagOwner = tag.userId === commandUser.id;
-
-	if (!isServerOwner && !isModerator && !isTagOwner) {
+	if (!canAccessTags(commandUser)) {
 		await interaction.reply({
-			content: `You do not own the tag \`${tagName}\`. Only the owner and moderators can transfer ownership.`,
-			flags: MessageFlags.Ephemeral,
+			components: [ErrorMessages.Tags.MissingRole],
+			flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
 		});
 		return;
 	}
+
+	await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+	const tag = await TagsManager.get(tagName);
+	if (tag === null) {
+		await interaction.editReply({
+			components: [ErrorMessages.Tags.TagNotFound(tagName)],
+			flags: MessageFlags.IsComponentsV2,
+		});
+		return;
+	}
+
+	if (!canModifyTag(commandUser, tag.userId)) {
+		await interaction.editReply({
+			components: [ErrorMessages.Tags.OwnershipRequired],
+			flags: MessageFlags.IsComponentsV2,
+		});
+		return;
+	}
+
 	if (tag.userId === newOwner.id) {
-		await interaction.reply({
-			content: `Tag \`${tagName}\` is already owned by ${newOwner.tag}.`,
-			flags: MessageFlags.Ephemeral,
+		await interaction.editReply({
+			components: [
+				basicMessage(
+					`Tag \`${tagName}\` is already owned by <@${newOwner.id}>.`
+				),
+			],
+			allowedMentions: { parse: [] },
+			flags: MessageFlags.IsComponentsV2,
 		});
 		return;
-	}
-
-	if (tag.userId !== interaction.user.id) {
 	}
 
 	try {
-		const updatedTag = await prisma.tag.update({
-			where: { name: tagName },
-			data: { userId: newOwner.id },
-		});
-		TagsCache.set(updatedTag);
-
-		await interaction.reply({
-			content: `Ownership of tag "${tagName}" has been transferred to ${newOwner.tag}.`,
-			flags: MessageFlags.Ephemeral,
+		await TagsManager.update(tagName, { userId: newOwner.id });
+		await interaction.editReply({
+			components: [
+				basicMessage(
+					`Ownership of tag \`${tagName}\` has been transferred to <@${newOwner.id}>.`
+				),
+			],
+			allowedMentions: { parse: [] },
+			flags: MessageFlags.IsComponentsV2,
 		});
 	} catch (error) {
 		console.error("Error transferring tag ownership:", error);
-		await interaction.reply({
-			content: `An error occurred while transferring ownership of tag "${tagName}".`,
-			flags: MessageFlags.Ephemeral,
+		await interaction.editReply({
+			components: [
+				basicErrorMessage(
+					`An error occurred while transferring ownership of tag \`${tagName}\`.`
+				),
+			],
+			flags: MessageFlags.IsComponentsV2,
 		});
 	}
 };

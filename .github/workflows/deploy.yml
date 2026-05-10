@@ -90,6 +90,7 @@ jobs:
             DISCORD_CLIENT_ID=${{ secrets.DISCORD_CLIENT_ID }}
             DISCORD_SERVER_ID=${{ secrets.DISCORD_SERVER_ID }}
             MODERATOR_ROLE_ID=${{ secrets.MODERATOR_ROLE_ID }}
+            TAG_ACCESS_ROLE_ID=${{ secrets.TAG_ACCESS_ROLE_ID }}
             EOF
             chmod 600 .env.runtime
             echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin

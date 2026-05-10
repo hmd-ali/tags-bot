@@ -5,7 +5,8 @@ import {
 	registerAutocompleteInteraction,
 } from "@/common/interactions/autocomplete-interaction.js";
 import { prisma } from "@/db/prisma.js";
-import { getCommandUser, isModerator, isServerOwner } from "@/util/user.js";
+import { isStaff } from "@/util/permissions.js";
+import { getCommandUser } from "@/util/user.js";
 import { changeTagsPrefix } from "./change-prefix.js";
 import { checkTagOwner } from "./check-owner.js";
 import { createTagCommandHandler } from "./create-tag.js";
@@ -157,7 +158,7 @@ const autoCompleteHandler: AutoCompleteSubmitInteraction = {
 			where: {
 				name: { contains: input },
 				userId: showOwnTags
-					? isServerOwner(commandUser) || isModerator(commandUser)
+					? isStaff(commandUser)
 						? undefined
 						: commandUser.id
 					: undefined,
