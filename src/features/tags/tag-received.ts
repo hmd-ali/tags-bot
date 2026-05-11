@@ -10,6 +10,8 @@ export const tagReceivedEvent = createEvent(
 		name: Events.MessageCreate,
 	},
 	async (message) => {
+		if (message.author.bot || message.author.system) return;
+
 		const prefix = getTagPrefix();
 		const tagRegex = new RegExp(
 			`(?:^|\\s)${prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([a-zA-Z][\\w-]*)`
