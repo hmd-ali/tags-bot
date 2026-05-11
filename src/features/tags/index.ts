@@ -14,6 +14,7 @@ import { currentPrefix } from "./current-prefix.js";
 import { deleteTagCommandHandler } from "./delete-tag.js";
 import { editTagCommandHandler } from "./edit-tag.js";
 import { listTagsCommandHandler } from "./list-tags.js";
+import { topTagsCommandHandler } from "./top-tags.js";
 import { transferTagOwnership } from "./transfer-ownership.js";
 
 export const tagCommand = createSlashCommand({
@@ -52,6 +53,12 @@ export const tagCommand = createSlashCommand({
 						required: false,
 					},
 				],
+			},
+			{
+				name: "top",
+				type: ApplicationCommandOptionType.Subcommand,
+				description: "Displays the top 10 most used tags in the server",
+				options: [],
 			},
 			{
 				name: "delete",
@@ -127,6 +134,7 @@ export const tagCommand = createSlashCommand({
 			create: createTagCommandHandler,
 			edit: editTagCommandHandler,
 			list: listTagsCommandHandler,
+			top: topTagsCommandHandler,
 			delete: deleteTagCommandHandler,
 			"change-prefix": changeTagsPrefix,
 			"current-prefix": currentPrefix,
