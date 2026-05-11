@@ -17,6 +17,7 @@ import {
 } from "@/util/components/basic-message.js";
 import { customId } from "@/util/custom-id.js";
 import { getCommandUser } from "@/util/user.js";
+import { isValidTagName } from "@/util/validate-tag-name.js";
 import { canAccessTags } from "./permissions.js";
 import { TagsManager } from "./tag.js";
 
@@ -82,6 +83,14 @@ const submissionHandler: ModalSubmitInteraction = {
 		const name = interaction.fields.getTextInputValue("name");
 		const content = interaction.fields.getTextInputValue("content");
 		const desc = interaction.fields.getTextInputValue("desc");
+
+		if (!isValidTagName(name)) {
+			await interaction.reply({
+				components: [ErrorMessages.Tags.InvalidTagName],
+				flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
+			});
+			return;
+		}
 
 		const userId = interaction.user.id;
 		try {

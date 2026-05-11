@@ -17,6 +17,7 @@ import {
 } from "@/util/components/basic-message.js";
 import { customId, parseCustomId } from "@/util/custom-id.js";
 import { getCommandUser } from "@/util/user.js";
+import { isValidTagName } from "@/util/validate-tag-name.js";
 import { canAccessTags, canModifyTag } from "./permissions.js";
 import { TagsManager } from "./tag.js";
 
@@ -101,6 +102,14 @@ const modalHandler: ModalSubmitInteraction = {
 		const name = interaction.fields.getTextInputValue("name");
 		const content = interaction.fields.getTextInputValue("content");
 		const desc = interaction.fields.getTextInputValue("desc");
+
+		if (!isValidTagName(name)) {
+			await interaction.reply({
+				components: [ErrorMessages.Tags.InvalidTagName],
+				flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
+			});
+			return;
+		}
 
 		const tag = await TagsManager.get(tagName);
 		if (tag === null || !canModifyTag(commandUser, tag.userId)) {
