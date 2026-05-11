@@ -1,12 +1,14 @@
 import type { Tag } from "@generated/prisma/client.js";
 import type { TagWhereInput } from "@generated/prisma/models.js";
 import {
+	ActionRowBuilder,
 	ButtonBuilder,
 	ButtonStyle,
 	type ChatInputCommandInteraction,
 	Colors,
 	ComponentType,
 	ContainerBuilder,
+	type MessageActionRowComponentBuilder,
 	MessageFlags,
 	SeparatorBuilder,
 	TextDisplayBuilder,
@@ -35,7 +37,7 @@ const fetchTags = async (page: number, search?: string | null) => {
 	const [tags, totalCount] = await Promise.all([
 		prisma.tag.findMany({
 			where,
-			orderBy: [{ uses: "desc" }, { name: "asc" }],
+			orderBy: { name: "asc" },
 			take: PAGE_SIZE,
 			skip: (page - 1) * PAGE_SIZE,
 		}),
@@ -74,29 +76,31 @@ export const buildListTagsComponents = (
 			new TextDisplayBuilder().setContent(tagLines || "No tags found.")
 		)
 		.addSeparatorComponents(new SeparatorBuilder())
-		.addActionRowComponents((row) =>
-			row.addComponents(
-				new ButtonBuilder()
-					.setCustomId(customId("list-tags", "prev", userId))
-					.setEmoji("⬅️")
-					.setLabel("Prev")
-					.setStyle(ButtonStyle.Secondary)
-					.setDisabled(page <= 1),
-				new ButtonBuilder()
-					.setCustomId(customId("list-tags", "next", userId))
-					.setLabel("Next")
-					.setEmoji("➡️")
-					.setStyle(ButtonStyle.Secondary)
-					.setDisabled(page >= totalPages)
-			)
-		)
 		.addTextDisplayComponents(
 			new TextDisplayBuilder().setContent(
 				`-# Total tags: ${totalCount} | Prefix: ${getTagPrefix()}`
 			)
 		);
 
-	return { container, totalPages };
+	const actionRow =
+		new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+			new ButtonBuilder()
+				.setCustomId(customId("list-tags", "prev", userId))
+				.setEmoji("⬅️")
+				.setLabel("Prev")
+				.setStyle(ButtonStyle.Secondary)
+				.setDisabled(page <= 1),
+			new ButtonBuilder()
+				.setCustomId(customId("list-tags", "next", userId))
+				.setLabel("Next")
+				.setEmoji("➡️")
+				.setStyle(ButtonStyle.Secondary)
+				.setDisabled(page >= totalPages)
+		);
+
+	const components = [container, actionRow];
+
+	return { components, totalPages };
 };
 
 export const listTagsCommandHandler = async (
@@ -107,7 +111,7 @@ export const listTagsCommandHandler = async (
 	const currentPage = 1;
 
 	const { tags, totalCount } = await fetchTags(currentPage, search);
-	const { container } = buildListTagsComponents(
+	const { components } = buildListTagsComponents(
 		tags,
 		totalCount > 0 ? currentPage : 0,
 		userId,
@@ -116,7 +120,7 @@ export const listTagsCommandHandler = async (
 	);
 
 	await interaction.reply({
-		components: [container],
+		components,
 		flags: MessageFlags.IsComponentsV2,
 	});
 };
@@ -157,7 +161,7 @@ const handleButtonSubmission: ButtonSubmitInteraction = {
 		await buttonInteraction.deferUpdate();
 
 		const { tags, totalCount } = await fetchTags(currentPage, search);
-		const { container } = buildListTagsComponents(
+		const { components } = buildListTagsComponents(
 			tags,
 			currentPage,
 			userId,
@@ -166,7 +170,7 @@ const handleButtonSubmission: ButtonSubmitInteraction = {
 		);
 
 		await buttonInteraction.editReply({
-			components: [container],
+			components,
 			flags: MessageFlags.IsComponentsV2,
 		});
 
