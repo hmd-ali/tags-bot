@@ -1,5 +1,4 @@
 import type { AutocompleteInteraction } from "discord.js";
-import { parseCustomId } from "@/util/custom-id.js";
 
 export type AutoCompleteSubmitInteraction = {
 	commandName: string;
@@ -23,6 +22,6 @@ export const registerAutocompleteInteraction = (
 export const handleAutoCompleteInteraction = async (
 	interaction: AutocompleteInteraction
 ): Promise<void> => {
-	const [commandName] = parseCustomId(interaction.commandName);
+	const { commandName } = interaction;
 	await autoCompleteInteractions.get(commandName)?.handler(interaction);
 };
