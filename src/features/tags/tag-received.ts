@@ -1,6 +1,5 @@
 import { Events } from "discord.js";
 import { createEvent } from "@/common/events/create-event.js";
-import { prisma } from "@/db/prisma.js";
 import { stripAllCode } from "@/util/strip-code.js";
 import { getTagPrefix } from "@/util/tag-prefix.js";
 import { TagsManager } from "./tag.js";
