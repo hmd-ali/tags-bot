@@ -15,7 +15,7 @@ export const registerAutocompleteInteraction = (
 	interaction: AutoCompleteSubmitInteraction
 ) => {
 	console.log(
-		`Registering button submit interaction: ${interaction.commandName}`
+		`Registering autocomplete interaction: ${interaction.commandName}`
 	);
 	autoCompleteInteractions.set(interaction.commandName, interaction);
 };
