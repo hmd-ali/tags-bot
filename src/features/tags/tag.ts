@@ -1,4 +1,7 @@
-import type { TagCreateInput } from "@generated/prisma/models.js";
+import type {
+	TagCreateInput,
+	TagUpdateInput,
+} from "@generated/prisma/models.js";
 import { TagsCache } from "@/cache/tags.js";
 import { prisma } from "@/db/prisma.js";
 
@@ -19,7 +22,7 @@ export const TagsManager = {
 		TagsCache.set(createdTag);
 		return createdTag;
 	},
-	update: async (name: string, data: Partial<TagCreateInput>) => {
+	update: async (name: string, data: Partial<TagUpdateInput>) => {
 		const updatedTag = await prisma.tag.update({
 			where: { name },
 			data,

@@ -1,9 +1,9 @@
 import { Events } from "discord.js";
-import { TagsCache } from "@/cache/tags.js";
 import { createEvent } from "@/common/events/create-event.js";
 import { prisma } from "@/db/prisma.js";
 import { stripAllCode } from "@/util/strip-code.js";
 import { getTagPrefix } from "@/util/tag-prefix.js";
+import { TagsManager } from "./tag.js";
 
 export const tagReceivedEvent = createEvent(
 	{
@@ -21,24 +21,10 @@ export const tagReceivedEvent = createEvent(
 		if (!match) return;
 
 		const tagName = match[1];
-		let tag = TagsCache.get(tagName) ?? null;
+		const tag = await TagsManager.get(tagName);
+		if (tag === null) return;
 
-		if (!tag) {
-			tag = await prisma.tag.findUnique({ where: { name: tagName } });
-			if (!tag) {
-				return;
-			}
-			TagsCache.set(tag);
-		}
-
-		prisma.tag
-			.update({
-				where: { name: tagName },
-				data: { uses: { increment: 1 } },
-			})
-			.catch(console.error);
-
-		TagsCache.set({ ...tag, uses: tag.uses + 1 });
+		TagsManager.update(tagName, { uses: { increment: 1 } });
 
 		await message.reply({
 			content: tag.content,
