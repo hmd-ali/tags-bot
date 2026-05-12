@@ -5,4 +5,4 @@ export const stripInlineCode = (text: string): string =>
 	text.replace(/`[^`]*`/g, "").trim();
 
 export const stripAllCode = (text: string): string =>
-	stripCodeBlocks(stripInlineCode(text)).trim();
+	stripInlineCode(stripCodeBlocks(text)).trim();
