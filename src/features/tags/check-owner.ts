@@ -8,20 +8,18 @@ export const checkTagOwner = async (
 ) => {
 	const name = interaction.options.getString("name", true);
 	await interaction.deferReply();
-	await interaction.editReply({
-		components: [basicMessage(`Checking ownership of tag \`${name}\`...`)],
-		flags: MessageFlags.IsComponentsV2,
-	});
 
 	const tag = await TagsManager.get(name);
 	if (tag === null) {
 		await interaction.editReply({
 			components: [ErrorMessages.Tags.TagNotFound(name)],
+			flags: MessageFlags.IsComponentsV2,
 		});
 		return null;
 	}
 	await interaction.editReply({
 		components: [basicMessage(`Tag \`${name}\` is owned by <@${tag.userId}>.`)],
+		flags: MessageFlags.IsComponentsV2,
 		allowedMentions: { parse: [] },
 	});
 	return;
