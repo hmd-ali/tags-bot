@@ -1,3 +1,4 @@
+import { Prisma } from "@generated/prisma/client.js";
 import {
 	type ChatInputCommandInteraction,
 	LabelBuilder,
@@ -94,14 +95,6 @@ const submissionHandler: ModalSubmitInteraction = {
 
 		const userId = interaction.user.id;
 		try {
-			const existingTag = await TagsManager.get(name);
-			if (existingTag !== null) {
-				await interaction.reply({
-					components: [ErrorMessages.Tags.TagAlreadyExists(name)],
-					flags: MessageFlags.Ephemeral,
-				});
-				return;
-			}
 			const tag = await TagsManager.create({ name, content, desc, userId });
 
 			await interaction.reply({
@@ -109,14 +102,14 @@ const submissionHandler: ModalSubmitInteraction = {
 				flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
 			});
 		} catch (error) {
-			console.error(error);
-			if (!interaction.replied) {
-				await interaction.reply({
-					components: [
-						basicErrorMessage("An error occurred while creating the tag."),
-					],
-					flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
-				});
+			if (error instanceof Prisma.PrismaClientKnownRequestError) {
+				if (error.code === "P2002") {
+					await interaction.reply({
+						components: [ErrorMessages.Tags.TagAlreadyExists(name)],
+						flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
+					});
+					return;
+				}
 			}
 		}
 	},
