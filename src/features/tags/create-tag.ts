@@ -12,10 +12,7 @@ import {
 	registerModalSubmitInteraction,
 } from "@/common/interactions/modal-interaction.js";
 import { ErrorMessages } from "@/error-messages/index.js";
-import {
-	basicErrorMessage,
-	basicMessage,
-} from "@/util/components/basic-message.js";
+import { basicMessage } from "@/util/components/basic-message.js";
 import { customId } from "@/util/custom-id.js";
 import { getCommandUser } from "@/util/user.js";
 import { isValidTagName } from "@/util/validate-tag-name.js";

@@ -1,3 +1,4 @@
+import { Prisma } from "@generated/prisma/client.js";
 import {
 	type ChatInputCommandInteraction,
 	LabelBuilder,
@@ -138,6 +139,16 @@ const modalHandler: ModalSubmitInteraction = {
 			});
 		} catch (error) {
 			console.error(error);
+			if (
+				error instanceof Prisma.PrismaClientKnownRequestError &&
+				error.code === "P2002"
+			) {
+				await interaction.reply({
+					components: [ErrorMessages.Tags.TagAlreadyExists(name)],
+					flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
+				});
+				return;
+			}
 			await interaction.reply({
 				components: [
 					basicErrorMessage(
