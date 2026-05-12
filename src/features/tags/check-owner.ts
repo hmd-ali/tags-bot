@@ -15,7 +15,7 @@ export const checkTagOwner = async (
 			components: [ErrorMessages.Tags.TagNotFound(name)],
 			flags: MessageFlags.IsComponentsV2,
 		});
-		return null;
+		return;
 	}
 	await interaction.editReply({
 		components: [basicMessage(`Tag \`${name}\` is owned by <@${tag.userId}>.`)],
