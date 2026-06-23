@@ -11,6 +11,7 @@ import {
 	type ModalSubmitInteraction,
 	registerModalSubmitInteraction,
 } from "@/common/interactions/modal-interaction.js";
+import { prisma } from "@/db/prisma.js";
 import { ErrorMessages } from "@/error-messages/index.js";
 import {
 	basicErrorMessage,
@@ -133,7 +134,7 @@ const modalHandler: ModalSubmitInteraction = {
 		const toAdd = newAliases.filter((n) => !existingNames.includes(n));
 		const toRemove = existingNames.filter((n) => !newAliases.includes(n));
 		try {
-			await TagService.update(tagName, {
+			const updatedTag = await TagService.update(tagName, {
 				content,
 				desc,
 				aliasesToAdd: toAdd,
@@ -141,7 +142,11 @@ const modalHandler: ModalSubmitInteraction = {
 			});
 
 			await interaction.reply({
-				components: [basicMessage(`Tag has been updated.`)],
+				components: [
+					basicMessage(
+						`Tag ${updatedTag?.aliases.map((tag) => tag.name).join(", ")} has been updated.`
+					),
+				],
 				flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
 			});
 		} catch (error) {
@@ -150,8 +155,17 @@ const modalHandler: ModalSubmitInteraction = {
 				error instanceof Prisma.PrismaClientKnownRequestError &&
 				error.code === "P2002"
 			) {
+				const existingTags = await prisma.tagAlias.findMany({
+					where: {
+						name: { in: newAliases },
+					},
+				});
 				await interaction.reply({
-					components: [ErrorMessages.Tags.TagAlreadyExists(tagName)],
+					components: [
+						ErrorMessages.Tags.TagAlreadyExists(
+							existingTags.map((t) => t.name).join(", ")
+						),
+					],
 					flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
 				});
 				return;
