@@ -164,18 +164,23 @@ const autoCompleteHandler: AutoCompleteSubmitInteraction = {
 		const commandUser = getCommandUser(interaction);
 		const allTags = await prisma.tag.findMany({
 			where: {
-				name: { contains: input },
+				aliases: {
+					some: {
+						name: { contains: input },
+					},
+				},
 				userId: showOwnTags
 					? isStaff(commandUser)
 						? undefined
 						: commandUser.id
 					: undefined,
 			},
+			include: { aliases: true },
 			take: 25,
 		});
 		const choices = allTags.map((tag) => ({
-			name: tag.name,
-			value: tag.name,
+			name: tag.aliases.map((a) => a.name).join(", "),
+			value: tag.aliases[0].name,
 		}));
 
 		await interaction.respond(choices);

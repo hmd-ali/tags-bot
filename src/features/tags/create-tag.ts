@@ -11,13 +11,14 @@ import {
 	type ModalSubmitInteraction,
 	registerModalSubmitInteraction,
 } from "@/common/interactions/modal-interaction.js";
+import { prisma } from "@/db/prisma.js";
 import { ErrorMessages } from "@/error-messages/index.js";
 import { basicMessage } from "@/util/components/basic-message.js";
 import { customId } from "@/util/custom-id.js";
 import { getCommandUser } from "@/util/user.js";
 import { isValidTagName } from "@/util/validate-tag-name.js";
 import { canAccessTags } from "./permissions.js";
-import { TagsManager } from "./tag.js";
+import { TagService } from "./tag-service.js";
 
 export const createTagCommandHandler = async (
 	interaction: ChatInputCommandInteraction
@@ -36,11 +37,13 @@ export const createTagCommandHandler = async (
 		.setTitle("Create Tag")
 		.addLabelComponents(
 			new LabelBuilder()
-				.setLabel("Name")
-				.setDescription("The name of the tag")
+				.setLabel("Aliases")
+				.setDescription(
+					"Comma-separated list of aliases (first one is the primary name)"
+				)
 				.setTextInputComponent(
 					new TextInputBuilder()
-						.setCustomId("name")
+						.setCustomId("aliases")
 						.setStyle(TextInputStyle.Short)
 						.setRequired(true)
 				),
@@ -78,11 +81,18 @@ const submissionHandler: ModalSubmitInteraction = {
 			return;
 		}
 
-		const name = interaction.fields.getTextInputValue("name");
+		const aliasesRaw = interaction.fields.getTextInputValue("aliases");
+		const aliases = aliasesRaw
+			.split(",")
+			.map((alias) => alias.trim())
+			.filter(Boolean);
 		const content = interaction.fields.getTextInputValue("content");
 		const desc = interaction.fields.getTextInputValue("desc");
 
-		if (!isValidTagName(name)) {
+		if (
+			aliases.length === 0 ||
+			aliases.some((alias) => !isValidTagName(alias))
+		) {
 			await interaction.reply({
 				components: [ErrorMessages.Tags.InvalidTagName],
 				flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
@@ -92,17 +102,35 @@ const submissionHandler: ModalSubmitInteraction = {
 
 		const userId = interaction.user.id;
 		try {
-			const tag = await TagsManager.create({ name, content, desc, userId });
+			await TagService.create({
+				content,
+				desc,
+				userId,
+				aliases,
+			});
 
 			await interaction.reply({
-				components: [basicMessage(`Tag created with name: \`${tag.name}\`.`)],
+				components: [basicMessage(`Tag created with name: \`${aliases[0]}\`.`)],
 				flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
 			});
 		} catch (error) {
 			if (error instanceof Prisma.PrismaClientKnownRequestError) {
 				if (error.code === "P2002") {
+					// console.error(
+					// 	"Error creating tag: Unique constraint violation",
+					// 	error.cause
+					// );
+					const existingTags = await prisma.tagAlias.findMany({
+						where: {
+							name: { in: aliases },
+						},
+					});
 					await interaction.reply({
-						components: [ErrorMessages.Tags.TagAlreadyExists(name)],
+						components: [
+							ErrorMessages.Tags.TagAlreadyExists(
+								existingTags.map((t) => t.name).join(", ")
+							),
+						],
 						flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
 					});
 					return;

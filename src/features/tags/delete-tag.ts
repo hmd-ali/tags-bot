@@ -6,7 +6,7 @@ import {
 } from "@/util/components/basic-message.js";
 import { getCommandUser } from "@/util/user.js";
 import { canAccessTags, canModifyTag } from "./permissions.js";
-import { TagsManager } from "./tag.js";
+import { TagService } from "./tag-service.js";
 
 export const deleteTagCommandHandler = async (
 	interaction: ChatInputCommandInteraction
@@ -24,7 +24,7 @@ export const deleteTagCommandHandler = async (
 	}
 
 	await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-	const tag = await TagsManager.get(name);
+	const tag = await TagService.getByName(name);
 	if (tag === null) {
 		await interaction.editReply({
 			components: [ErrorMessages.Tags.TagNotFound(name)],
@@ -42,7 +42,7 @@ export const deleteTagCommandHandler = async (
 	}
 
 	try {
-		await TagsManager.delete(name);
+		await TagService.delete(tag.id);
 		await interaction.editReply({
 			components: [basicMessage(`Tag \`${name}\` has been deleted.`)],
 			flags: MessageFlags.IsComponentsV2,

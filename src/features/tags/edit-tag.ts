@@ -20,7 +20,7 @@ import { customId, parseCustomId } from "@/util/custom-id.js";
 import { getCommandUser } from "@/util/user.js";
 import { isValidTagName } from "@/util/validate-tag-name.js";
 import { canAccessTags, canModifyTag } from "./permissions.js";
-import { TagsManager } from "./tag.js";
+import { TagService } from "./tag-service.js";
 
 const BASE_NAME = "tags-edit";
 
@@ -39,7 +39,7 @@ export const editTagCommandHandler = async (
 
 	const name = interaction.options.getString("name", true);
 
-	const tag = await TagsManager.get(name);
+	const tag = await TagService.getByName(name);
 	if (tag === null) {
 		await interaction.reply({
 			components: [ErrorMessages.Tags.TagNotFound(name)],
@@ -61,14 +61,16 @@ export const editTagCommandHandler = async (
 		.setCustomId(customId(BASE_NAME, name))
 		.addLabelComponents(
 			new LabelBuilder()
-				.setLabel("Name")
-				.setDescription("The name of the tag")
+				.setLabel("Aliases")
+				.setDescription(
+					"Comma-separated list of aliases (first one is the primary name)"
+				)
 				.setTextInputComponent(
 					new TextInputBuilder()
-						.setCustomId("name")
+						.setCustomId("aliases")
 						.setStyle(TextInputStyle.Short)
 						.setRequired(true)
-						.setValue(tag.name)
+						.setValue(tag.aliases.map((a) => a.name).join(", "))
 				),
 			new LabelBuilder()
 				.setLabel("Short Description")
@@ -100,11 +102,17 @@ const modalHandler: ModalSubmitInteraction = {
 	handler: async (interaction) => {
 		const commandUser = getCommandUser(interaction);
 		const [_, tagName] = parseCustomId(interaction.customId);
-		const name = interaction.fields.getTextInputValue("name");
+		const aliasesRaw = interaction.fields.getTextInputValue("aliases");
+		const newAliases = aliasesRaw
+			.split(",")
+			.map((s) => s.trim().toLowerCase())
+			.filter(Boolean);
 		const content = interaction.fields.getTextInputValue("content");
 		const desc = interaction.fields.getTextInputValue("desc");
-
-		if (!isValidTagName(name)) {
+		if (
+			newAliases.length === 0 ||
+			newAliases.some((alias) => !isValidTagName(alias))
+		) {
 			await interaction.reply({
 				components: [ErrorMessages.Tags.InvalidTagName],
 				flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
@@ -112,7 +120,7 @@ const modalHandler: ModalSubmitInteraction = {
 			return;
 		}
 
-		const tag = await TagsManager.get(tagName);
+		const tag = await TagService.getByName(tagName);
 		if (tag === null || !canModifyTag(commandUser, tag.userId)) {
 			await interaction.reply({
 				components: [ErrorMessages.Tags.OwnershipRequired],
@@ -121,20 +129,19 @@ const modalHandler: ModalSubmitInteraction = {
 			return;
 		}
 
+		const existingNames = tag.aliases.map((a) => a.name);
+		const toAdd = newAliases.filter((n) => !existingNames.includes(n));
+		const toRemove = existingNames.filter((n) => !newAliases.includes(n));
 		try {
-			await TagsManager.update(tagName, {
-				name,
+			await TagService.update(tagName, {
 				content,
 				desc,
+				aliasesToAdd: toAdd,
+				aliasesToRemove: toRemove,
 			});
 
-			const message =
-				tagName === name
-					? `Tag \`${name}\` has been updated.`
-					: `Tag \`${tagName}\` has been updated and renamed to \`${name}\`.`;
-
 			await interaction.reply({
-				components: [basicMessage(message)],
+				components: [basicMessage(`Tag has been updated.`)],
 				flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
 			});
 		} catch (error) {
@@ -144,7 +151,7 @@ const modalHandler: ModalSubmitInteraction = {
 				error.code === "P2002"
 			) {
 				await interaction.reply({
-					components: [ErrorMessages.Tags.TagAlreadyExists(name)],
+					components: [ErrorMessages.Tags.TagAlreadyExists(tagName)],
 					flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
 				});
 				return;

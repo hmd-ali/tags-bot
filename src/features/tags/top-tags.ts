@@ -1,3 +1,4 @@
+import type { TagAlias } from "@generated/prisma/client.js";
 import {
 	type ChatInputCommandInteraction,
 	Colors,
@@ -5,17 +6,14 @@ import {
 	MessageFlags,
 	TextDisplayBuilder,
 } from "discord.js";
-import { prisma } from "@/db/prisma.js";
 import { basicMessage } from "@/util/components/basic-message.js";
+import { TagService } from "./tag-service.js";
 
 export const topTagsCommandHandler = async (
 	interaction: ChatInputCommandInteraction
 ) => {
 	await interaction.deferReply();
-	const topTags = await prisma.tag.findMany({
-		orderBy: { uses: "desc" },
-		take: 10,
-	});
+	const topTags = await TagService.getTopTags(10);
 
 	if (topTags.length === 0) {
 		await interaction.editReply({
@@ -24,8 +22,10 @@ export const topTagsCommandHandler = async (
 		});
 		return;
 	}
-
-	const longestName = Math.max(...topTags.map((t) => t.name.length));
+	const getFirstAliasName = (tag: TagAlias[]) => tag[0].name;
+	const longestName = Math.max(
+		...topTags.map((tag) => getFirstAliasName(tag.aliases).length)
+	);
 	const medals = ["🥇", "🥈", "🥉"];
 
 	const response = [
@@ -37,7 +37,7 @@ export const topTagsCommandHandler = async (
 				? `${medals[index]} \u2005`
 				: `${String(index + 1).padStart(2, " ")}. `;
 
-			const paddedName = tag.name.padEnd(longestName + 2);
+			const paddedName = getFirstAliasName(tag.aliases).padEnd(longestName + 2);
 
 			return `${prefix}${paddedName}${tag.uses} use${tag.uses !== 1 ? "s" : ""}`;
 		}),

@@ -1,7 +1,7 @@
 import { type ChatInputCommandInteraction, MessageFlags } from "discord.js";
 import { ErrorMessages } from "@/error-messages/index.js";
 import { basicMessage } from "@/util/components/basic-message.js";
-import { TagsManager } from "./tag.js";
+import { TagService } from "./tag-service.js";
 
 export const checkTagOwner = async (
 	interaction: ChatInputCommandInteraction
@@ -9,7 +9,7 @@ export const checkTagOwner = async (
 	const name = interaction.options.getString("name", true);
 	await interaction.deferReply();
 
-	const tag = await TagsManager.get(name);
+	const tag = await TagService.getByName(name);
 	if (tag === null) {
 		await interaction.editReply({
 			components: [ErrorMessages.Tags.TagNotFound(name)],

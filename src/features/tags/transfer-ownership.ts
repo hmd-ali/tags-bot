@@ -6,7 +6,7 @@ import {
 } from "@/util/components/basic-message.js";
 import { getCommandUser } from "@/util/user.js";
 import { canAccessTags, canModifyTag } from "./permissions.js";
-import { TagsManager } from "./tag.js";
+import { TagService } from "./tag-service.js";
 
 export const transferTagOwnership = async (
 	interaction: ChatInputCommandInteraction
@@ -25,7 +25,7 @@ export const transferTagOwnership = async (
 
 	await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-	const tag = await TagsManager.get(tagName);
+	const tag = await TagService.getByName(tagName);
 	if (tag === null) {
 		await interaction.editReply({
 			components: [ErrorMessages.Tags.TagNotFound(tagName)],
@@ -56,7 +56,7 @@ export const transferTagOwnership = async (
 	}
 
 	try {
-		await TagsManager.update(tagName, { userId: newOwner.id });
+		await TagService.transferOwnership(tag.id, newOwner.id);
 		await interaction.editReply({
 			components: [
 				basicMessage(

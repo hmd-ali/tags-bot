@@ -2,7 +2,7 @@ import { Events } from "discord.js";
 import { createEvent } from "@/common/events/create-event.js";
 import { stripAllCode } from "@/util/strip-code.js";
 import { getTagPrefix } from "@/util/tag-prefix.js";
-import { TagsManager } from "./tag.js";
+import { TagService } from "./tag-service.js";
 
 export const tagReceivedEvent = createEvent(
 	{
@@ -20,10 +20,10 @@ export const tagReceivedEvent = createEvent(
 		if (!match) return;
 
 		const tagName = match[1];
-		const tag = await TagsManager.get(tagName);
+		const tag = await TagService.getByName(tagName);
 		if (tag === null) return;
 
-		TagsManager.update(tagName, { uses: { increment: 1 } });
+		TagService.incrementUses(tag.id);
 
 		await message.reply({
 			content: tag.content,

@@ -22,7 +22,6 @@ model Options {
 
 model Tag {
   id        Int      @id @default(autoincrement())
-  name      String   @unique
   content   String
   desc      String
   userId    String
@@ -32,7 +31,6 @@ model Tag {
 
   aliases TagAlias[]
 
-  @@index([name])
   @@index([userId])
   @@index([desc])
   @@index([uses])

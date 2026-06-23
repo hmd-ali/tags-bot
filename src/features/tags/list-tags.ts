@@ -1,4 +1,4 @@
-import type { Tag } from "@generated/prisma/client.js";
+import type { Tag, TagAlias } from "@generated/prisma/client.js";
 import type { TagWhereInput } from "@generated/prisma/models.js";
 import {
 	ActionRowBuilder,
@@ -23,12 +23,17 @@ import { customId, parseCustomId } from "@/util/custom-id.js";
 import { getTagPrefix } from "@/util/tag-prefix.js";
 import { truncate } from "@/util/truncate.js";
 
+type FullTag = Tag & { aliases: TagAlias[] };
+
 const PAGE_SIZE = 10;
 
 const buildTagWhere = (search?: string | null): TagWhereInput | undefined =>
 	search
 		? {
-				OR: [{ name: { contains: search } }, { desc: { contains: search } }],
+				OR: [
+					{ aliases: { some: { name: { contains: search } } } },
+					{ desc: { contains: search } },
+				],
 			}
 		: undefined;
 
@@ -37,7 +42,8 @@ const fetchTags = async (page: number, search?: string | null) => {
 	const [tags, totalCount] = await Promise.all([
 		prisma.tag.findMany({
 			where,
-			orderBy: { name: "asc" },
+			include: { aliases: { orderBy: { id: "asc" }, take: 1 } },
+			orderBy: { aliases: { _count: "asc" } },
 			take: PAGE_SIZE,
 			skip: (page - 1) * PAGE_SIZE,
 		}),
@@ -47,7 +53,7 @@ const fetchTags = async (page: number, search?: string | null) => {
 };
 
 export const buildListTagsComponents = (
-	tags: Tag[],
+	tags: FullTag[],
 	page: number,
 	userId: string,
 	totalCount: number,
@@ -63,10 +69,10 @@ export const buildListTagsComponents = (
 	const offset = (page - 1) * PAGE_SIZE;
 
 	const tagLines = tags
-		.map(
-			(t, i) =>
-				`${i + offset + 1}) **${t.name}** • ${truncate(t.desc, 120)} ${t.uses > 0 ? `• Used **${t.uses}x**` : ""}`
-		)
+		.map((t, i) => {
+			const primaryName = t.aliases[0]?.name ?? "(unnamed)";
+			return `${i + offset + 1}) **${primaryName}** • ${truncate(t.desc, 120)} ${t.uses > 0 ? `• Used **${t.uses}x**` : ""}`;
+		})
 		.join("\n");
 
 	container
@@ -130,9 +136,6 @@ const handleButtonSubmission: ButtonSubmitInteraction = {
 	handler: async (buttonInteraction) => {
 		const [_, action, userId] = parseCustomId(buttonInteraction.customId);
 		if (buttonInteraction.user.id !== userId) {
-			console.log(
-				`User ${buttonInteraction.user.id} attempted to use pagination buttons for user ${userId}`
-			);
 			await buttonInteraction.reply({
 				content: "Only the command invoker can use these buttons.",
 				flags: MessageFlags.Ephemeral,
@@ -140,14 +143,10 @@ const handleButtonSubmission: ButtonSubmitInteraction = {
 			return;
 		}
 
-		if (!buttonInteraction.isMessageComponent()) {
-			console.log("Not a message component interaction");
-			return;
-		}
+		if (!buttonInteraction.isMessageComponent()) return;
 
 		const info = getInfoFromComponents(buttonInteraction.message.components);
 		if (info === undefined) {
-			console.log("Failed to extract pagination info from components");
 			await buttonInteraction.reply({
 				content: "An error occurred while processing the pagination.",
 				flags: MessageFlags.Ephemeral,
@@ -173,8 +172,6 @@ const handleButtonSubmission: ButtonSubmitInteraction = {
 			components,
 			flags: MessageFlags.IsComponentsV2,
 		});
-
-		return;
 	},
 };
 
