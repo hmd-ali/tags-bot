@@ -15,8 +15,8 @@ import { prisma } from "@/db/prisma.js";
 import { ErrorMessages } from "@/error-messages/index.js";
 import { basicMessage } from "@/util/components/basic-message.js";
 import { customId } from "@/util/custom-id.js";
+import { getTagPrimaryAlias, isValidTagName } from "@/util/tags.js";
 import { getCommandUser } from "@/util/user.js";
-import { isValidTagName } from "@/util/validate-tag-name.js";
 import { canAccessTags } from "./permissions.js";
 import { TagService } from "./tag-service.js";
 
@@ -102,7 +102,7 @@ const submissionHandler: ModalSubmitInteraction = {
 
 		const userId = interaction.user.id;
 		try {
-			await TagService.create({
+			const tag = await TagService.create({
 				content,
 				desc,
 				userId,
@@ -110,16 +110,16 @@ const submissionHandler: ModalSubmitInteraction = {
 			});
 
 			await interaction.reply({
-				components: [basicMessage(`Tag created with name: \`${aliases[0]}\`.`)],
+				components: [
+					basicMessage(
+						`Tag created with name: \`${getTagPrimaryAlias(tag)}\`.`
+					),
+				],
 				flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
 			});
 		} catch (error) {
 			if (error instanceof Prisma.PrismaClientKnownRequestError) {
 				if (error.code === "P2002") {
-					// console.error(
-					// 	"Error creating tag: Unique constraint violation",
-					// 	error.cause
-					// );
 					const existingTags = await prisma.tagAlias.findMany({
 						where: {
 							name: { in: aliases },

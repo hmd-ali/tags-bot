@@ -59,7 +59,7 @@ export const TagService = {
 			data: {
 				content: data.content,
 				desc: data.desc,
-				userId: data.userId,
+				lastModifiedBy: data.userId,
 				aliases: {
 					create: data.aliases.map((name) => ({ name })),
 				},
@@ -75,47 +75,37 @@ export const TagService = {
 		data: {
 			content: string;
 			desc: string;
-			aliasesToAdd: string[];
-			aliasesToRemove: string[];
+			aliases: string[];
+			userId: string;
 		}
 	): Promise<FullTag | null> {
 		const existing = await this.getByName(aliasName);
 		if (!existing) return null;
 
-		if (existing.aliases.length - data.aliasesToRemove.length < 1) {
-			throw new Error("Tag must have at least one alias.");
+		if (data.aliases.length === 0) {
+			throw new Error("Cannot update a tag to have no aliases.");
 		}
 
 		evict(existing);
 
 		await prisma.$transaction([
-			// update tag body
 			prisma.tag.update({
 				where: { id: existing.id },
-				data: { content: data.content, desc: data.desc },
+				data: {
+					content: data.content,
+					desc: data.desc,
+					lastModifiedBy: data.userId,
+				},
 			}),
-			// remove aliases
-			...(data.aliasesToRemove.length > 0
-				? [
-						prisma.tagAlias.deleteMany({
-							where: {
-								tagId: existing.id,
-								name: { in: data.aliasesToRemove },
-							},
-						}),
-					]
-				: []),
-			// add aliases
-			...(data.aliasesToAdd.length > 0
-				? [
-						prisma.tagAlias.createMany({
-							data: data.aliasesToAdd.map((name) => ({
-								name,
-								tagId: existing.id,
-							})),
-						}),
-					]
-				: []),
+			prisma.tagAlias.deleteMany({
+				where: { tagId: existing.id },
+			}),
+			prisma.tagAlias.createMany({
+				data: data.aliases.map((name) => ({
+					name,
+					tagId: existing.id,
+				})),
+			}),
 		]);
 
 		const tag = await prisma.tag.findUnique({

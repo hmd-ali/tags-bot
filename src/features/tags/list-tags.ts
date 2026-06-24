@@ -21,9 +21,10 @@ import {
 import { prisma } from "@/db/prisma.js";
 import { customId, parseCustomId } from "@/util/custom-id.js";
 import { getTagPrefix } from "@/util/tag-prefix.js";
+import { getTagPrimaryAlias } from "@/util/tags.js";
 import { truncate } from "@/util/truncate.js";
 
-type FullTag = Tag & { aliases: TagAlias[] };
+export type FullTag = Tag & { aliases: TagAlias[] };
 
 const PAGE_SIZE = 10;
 
@@ -69,9 +70,9 @@ export const buildListTagsComponents = (
 	const offset = (page - 1) * PAGE_SIZE;
 
 	const tagLines = tags
-		.map((t, i) => {
-			const primaryName = t.aliases[0]?.name ?? "(unnamed)";
-			return `${i + offset + 1}) **${primaryName}** • ${truncate(t.desc, 120)} ${t.uses > 0 ? `• Used **${t.uses}x**` : ""}`;
+		.map((tag, index) => {
+			const primaryName = getTagPrimaryAlias(tag) ?? "(unnamed)";
+			return `${index + offset + 1}) **${primaryName}** • ${truncate(tag.desc, 120)} ${tag.uses > 0 ? `• Used **${tag.uses}x**` : ""}`;
 		})
 		.join("\n");
 

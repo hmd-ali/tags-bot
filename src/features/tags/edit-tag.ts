@@ -18,9 +18,9 @@ import {
 	basicMessage,
 } from "@/util/components/basic-message.js";
 import { customId, parseCustomId } from "@/util/custom-id.js";
+import { isValidTagName } from "@/util/tags.js";
 import { getCommandUser } from "@/util/user.js";
-import { isValidTagName } from "@/util/validate-tag-name.js";
-import { canAccessTags, canModifyTag } from "./permissions.js";
+import { canAccessTags } from "./permissions.js";
 import { TagService } from "./tag-service.js";
 
 const BASE_NAME = "tags-edit";
@@ -45,14 +45,6 @@ export const editTagCommandHandler = async (
 		await interaction.reply({
 			components: [ErrorMessages.Tags.TagNotFound(name)],
 			flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
-		});
-		return;
-	}
-
-	if (!canModifyTag(commandUser, tag.userId)) {
-		await interaction.reply({
-			components: [ErrorMessages.Tags.OwnershipRequired],
-			flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
 		});
 		return;
 	}
@@ -101,7 +93,6 @@ export const editTagCommandHandler = async (
 const modalHandler: ModalSubmitInteraction = {
 	commandName: BASE_NAME,
 	handler: async (interaction) => {
-		const commandUser = getCommandUser(interaction);
 		const [_, tagName] = parseCustomId(interaction.customId);
 		const aliasesRaw = interaction.fields.getTextInputValue("aliases");
 		const newAliases = aliasesRaw
@@ -121,24 +112,12 @@ const modalHandler: ModalSubmitInteraction = {
 			return;
 		}
 
-		const tag = await TagService.getByName(tagName);
-		if (tag === null || !canModifyTag(commandUser, tag.userId)) {
-			await interaction.reply({
-				components: [ErrorMessages.Tags.OwnershipRequired],
-				flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
-			});
-			return;
-		}
-
-		const existingNames = tag.aliases.map((a) => a.name);
-		const toAdd = newAliases.filter((n) => !existingNames.includes(n));
-		const toRemove = existingNames.filter((n) => !newAliases.includes(n));
 		try {
 			const updatedTag = await TagService.update(tagName, {
 				content,
 				desc,
-				aliasesToAdd: toAdd,
-				aliasesToRemove: toRemove,
+				aliases: newAliases,
+				userId: interaction.user.id,
 			});
 
 			await interaction.reply({

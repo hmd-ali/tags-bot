@@ -1,21 +1,21 @@
-import { ApplicationCommandOptionType } from "discord.js";
+import {
+	type ApplicationCommandOptionChoiceData,
+	ApplicationCommandOptionType,
+} from "discord.js";
 import { createSlashCommand } from "@/common/commands/create-commands.js";
 import {
 	type AutoCompleteSubmitInteraction,
 	registerAutocompleteInteraction,
 } from "@/common/interactions/autocomplete-interaction.js";
 import { prisma } from "@/db/prisma.js";
-import { isStaff } from "@/util/permissions.js";
-import { getCommandUser } from "@/util/user.js";
 import { changeTagsPrefix } from "./change-prefix.js";
-import { checkTagOwner } from "./check-owner.js";
 import { createTagCommandHandler } from "./create-tag.js";
 import { currentPrefix } from "./current-prefix.js";
 import { deleteTagCommandHandler } from "./delete-tag.js";
 import { editTagCommandHandler } from "./edit-tag.js";
+import { getTagInfoCommandHandler } from "./get-tag-info.js";
 import { listTagsCommandHandler } from "./list-tags.js";
 import { topTagsCommandHandler } from "./top-tags.js";
-import { transferTagOwnership } from "./transfer-ownership.js";
 
 export const tagCommand = createSlashCommand({
 	data: {
@@ -75,36 +75,16 @@ export const tagCommand = createSlashCommand({
 				],
 			},
 			{
-				name: "owner",
+				name: "info",
 				type: ApplicationCommandOptionType.Subcommand,
-				description: "Check the owner of a tag",
+				description: "Get information about a tag",
 				options: [
 					{
 						name: "name",
 						type: ApplicationCommandOptionType.String,
-						description: "The name of the tag to check ownership for",
+						description: "The name of the tag to get information about",
 						required: true,
 						autocomplete: true,
-					},
-				],
-			},
-			{
-				name: "transfer",
-				type: ApplicationCommandOptionType.Subcommand,
-				description: "Transfer ownership of a tag to another user",
-				options: [
-					{
-						name: "name",
-						type: ApplicationCommandOptionType.String,
-						description: "The name of the tag to transfer ownership of",
-						required: true,
-						autocomplete: true,
-					},
-					{
-						name: "new_owner",
-						type: ApplicationCommandOptionType.User,
-						description: "The new owner of the tag",
-						required: true,
 					},
 				],
 			},
@@ -138,8 +118,7 @@ export const tagCommand = createSlashCommand({
 			delete: deleteTagCommandHandler,
 			"change-prefix": changeTagsPrefix,
 			"current-prefix": currentPrefix,
-			owner: checkTagOwner,
-			transfer: transferTagOwnership,
+			info: getTagInfoCommandHandler,
 		};
 
 		if (subCommand in handlersMap) {
@@ -157,11 +136,7 @@ const autoCompleteHandler: AutoCompleteSubmitInteraction = {
 		if (focusedOption.name !== "name") {
 			return;
 		}
-		const showOwnTags = ["edit", "delete", "transfer"].includes(
-			interaction.options.getSubcommand()
-		);
 		const input = focusedOption.value;
-		const commandUser = getCommandUser(interaction);
 		const allTags = await prisma.tag.findMany({
 			where: {
 				aliases: {
@@ -169,19 +144,19 @@ const autoCompleteHandler: AutoCompleteSubmitInteraction = {
 						name: { contains: input },
 					},
 				},
-				userId: showOwnTags
-					? isStaff(commandUser)
-						? undefined
-						: commandUser.id
-					: undefined,
 			},
 			include: { aliases: true },
 			take: 25,
 		});
-		const choices = allTags.map((tag) => ({
-			name: tag.aliases.map((a) => a.name).join(", "),
-			value: tag.aliases[0].name,
-		}));
+
+		const choices = allTags.flatMap((tag) =>
+			tag.aliases.map(
+				(alias): ApplicationCommandOptionChoiceData => ({
+					name: alias.name,
+					value: alias.name,
+				})
+			)
+		);
 
 		await interaction.respond(choices);
 	},

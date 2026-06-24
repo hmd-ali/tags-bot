@@ -1,4 +1,3 @@
-import type { TagAlias } from "@generated/prisma/client.js";
 import {
 	type ChatInputCommandInteraction,
 	Colors,
@@ -7,6 +6,7 @@ import {
 	TextDisplayBuilder,
 } from "discord.js";
 import { basicMessage } from "@/util/components/basic-message.js";
+import { getTagPrimaryAlias } from "@/util/tags.js";
 import { TagService } from "./tag-service.js";
 
 export const topTagsCommandHandler = async (
@@ -22,9 +22,8 @@ export const topTagsCommandHandler = async (
 		});
 		return;
 	}
-	const getFirstAliasName = (tag: TagAlias[]) => tag[0].name;
 	const longestName = Math.max(
-		...topTags.map((tag) => getFirstAliasName(tag.aliases).length)
+		...topTags.map((tag) => getTagPrimaryAlias(tag).length)
 	);
 	const medals = ["🥇", "🥈", "🥉"];
 
@@ -37,7 +36,7 @@ export const topTagsCommandHandler = async (
 				? `${medals[index]} \u2005`
 				: `${String(index + 1).padStart(2, " ")}. `;
 
-			const paddedName = getFirstAliasName(tag.aliases).padEnd(longestName + 2);
+			const paddedName = getTagPrimaryAlias(tag).padEnd(longestName + 2);
 
 			return `${prefix}${paddedName}${tag.uses} use${tag.uses !== 1 ? "s" : ""}`;
 		}),

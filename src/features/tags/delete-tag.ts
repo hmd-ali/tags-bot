@@ -4,8 +4,9 @@ import {
 	basicErrorMessage,
 	basicMessage,
 } from "@/util/components/basic-message.js";
+import { getTagPrimaryAlias } from "@/util/tags.js";
 import { getCommandUser } from "@/util/user.js";
-import { canAccessTags, canModifyTag } from "./permissions.js";
+import { canAccessTags } from "./permissions.js";
 import { TagService } from "./tag-service.js";
 
 export const deleteTagCommandHandler = async (
@@ -33,18 +34,12 @@ export const deleteTagCommandHandler = async (
 		return;
 	}
 
-	if (!canModifyTag(commandUser, tag.userId)) {
-		await interaction.editReply({
-			components: [ErrorMessages.Tags.OwnershipRequired],
-			flags: MessageFlags.IsComponentsV2,
-		});
-		return;
-	}
-
 	try {
 		await TagService.delete(tag.id);
 		await interaction.editReply({
-			components: [basicMessage(`Tag \`${name}\` has been deleted.`)],
+			components: [
+				basicMessage(`Tag \`${getTagPrimaryAlias(tag)}\` has been deleted.`),
+			],
 			flags: MessageFlags.IsComponentsV2,
 		});
 	} catch (error) {

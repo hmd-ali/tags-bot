@@ -21,17 +21,16 @@ model Options {
 }
 
 model Tag {
-  id        Int      @id @default(autoincrement())
-  content   String
-  desc      String
-  userId    String
-  uses      Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             Int      @id @default(autoincrement())
+  content        String
+  desc           String
+  lastModifiedBy String
+  uses           Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   aliases TagAlias[]
 
-  @@index([userId])
   @@index([desc])
   @@index([uses])
   @@map("tags")

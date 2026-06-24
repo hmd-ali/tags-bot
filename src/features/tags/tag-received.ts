@@ -1,4 +1,4 @@
-import { Events } from "discord.js";
+import { Events, type MessageCreateOptions } from "discord.js";
 import { createEvent } from "@/common/events/create-event.js";
 import { stripAllCode } from "@/util/strip-code.js";
 import { getTagPrefix } from "@/util/tag-prefix.js";
@@ -25,9 +25,12 @@ export const tagReceivedEvent = createEvent(
 
 		TagService.incrementUses(tag.id);
 
-		await message.reply({
+		const options: MessageCreateOptions = {
 			content: tag.content,
-			allowedMentions: { parse: [] },
-		});
+			reply: { messageReference: message.reference?.messageId ?? message.id },
+			allowedMentions: { parse: [], repliedUser: message.reference !== null },
+		};
+
+		await message.channel.send(options);
 	}
 );
