@@ -1,4 +1,4 @@
-import { ChannelType, Events, type Message } from "discord.js";
+import { Events, type Message } from "discord.js";
 import { createEvent } from "@/common/events/create-event.js";
 import { createQuoteEmbed } from "./embed.js";
 
@@ -23,8 +23,7 @@ export const quoteReceived = createEvent(
 
 		const getMessage = async (channelId: string, messageId: string) => {
 			const channel = await messageWithLinks.client.channels.fetch(channelId);
-			if (!channel?.isTextBased || channel?.type !== ChannelType.GuildText)
-				return null;
+			if (!channel?.isTextBased() || channel.isDMBased()) return null;
 			try {
 				const quotedMessage = await channel.messages.fetch(messageId);
 				return quotedMessage;
@@ -48,9 +47,9 @@ export const quoteReceived = createEvent(
 		messageWithLinks.content = messageWithLinks.content
 			.replace(messageLinkRegex, "")
 			.trim();
-
 		const isLinksOnly = messageWithLinks.content.length === 0;
-		if (isLinksOnly) {
+		const shouldDelete = isLinksOnly && validQuotedMessages.length > 0;
+		if (shouldDelete) {
 			try {
 				void messageWithLinks.delete();
 			} catch {}
@@ -58,14 +57,16 @@ export const quoteReceived = createEvent(
 
 		const channel = messageWithLinks.channel;
 		await Promise.all(
-			validQuotedMessages.map((quotedMessage) =>
+			validQuotedMessages.map((quotedMessage, index) =>
 				channel.send(
 					createQuoteEmbed({
 						quotedMessage,
 						quotedBy: messageWithLinks.author,
 						referenceMessageId:
-							messageWithLinks.reference?.messageId ||
-							(isLinksOnly ? undefined : messageWithLinks.id),
+							index === 0
+								? messageWithLinks.reference?.messageId ||
+									(shouldDelete ? undefined : messageWithLinks.id)
+								: undefined,
 					})
 				)
 			)
