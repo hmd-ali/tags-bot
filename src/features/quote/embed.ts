@@ -20,10 +20,10 @@ type OriginalQuoteInfo = {
 };
 
 // Captures the pieces of a line we previously generated:
-// "<@quotedBy> quoted <@author> from **channel** [link ↗](<url>)"
+// "<@quotedBy> quoted <@author> from **#channel** [link ↗](<url>)"
 // Used on both the V1 field value and the V2 text line (V2 has a "-# " prefix).
 const QUOTE_LINE_CAPTURE_REGEX =
-	/^(?:-#\s)?<@!?\d+>\squoted\s(<@!?\d+>)\sfrom\s\*\*(.+?)\*\*\s\[link ↗\]\(<(.+?)>\)$/;
+	/^(?:-#\s)?<@!?\d+>\squoted\s(<@!?\d+>)\sfrom\s\*\*#(.+?)\*\*\s\[link ↗\]\(<(.+?)>\)$/;
 
 const parseOriginalQuoteInfo = (text: string): OriginalQuoteInfo | null => {
 	const match = QUOTE_LINE_CAPTURE_REGEX.exec(text);
@@ -34,7 +34,7 @@ const parseOriginalQuoteInfo = (text: string): OriginalQuoteInfo | null => {
 
 const buildQuoteLine = (quotedBy: User, info: OriginalQuoteInfo): string =>
 	truncate(
-		`${quotedBy} quoted ${info.authorMention} from **${info.channelName}** [link ↗](<${info.jumpLink}>)`,
+		`${quotedBy} quoted ${info.authorMention} from **#${info.channelName}** [link ↗](<${info.jumpLink}>)`,
 		FIELD_VALUE_LIMIT
 	);
 
