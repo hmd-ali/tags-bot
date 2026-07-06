@@ -1,8 +1,12 @@
 import {
+	ActionRowBuilder,
 	type APIEmbedField,
+	ButtonBuilder,
+	ButtonStyle,
 	ComponentType,
 	EmbedBuilder,
 	type Message,
+	type MessageActionRowComponentBuilder,
 	type MessageCreateOptions,
 	MessageFlags,
 	TextDisplayBuilder,
@@ -12,6 +16,7 @@ import { truncate } from "@/util/truncate.js";
 
 const EMBED_DESC_LIMIT = 4096;
 const FIELD_VALUE_LIMIT = 1024;
+const JUMP_BUTTON_LABEL = "Jump to message";
 
 type OriginalQuoteInfo = {
 	authorMention: string;
@@ -20,23 +25,49 @@ type OriginalQuoteInfo = {
 };
 
 // Captures the pieces of a line we previously generated:
-// "<@quotedBy> quoted <@author> from **#channel** [link ↗](<url>)"
-// Used on both the V1 field value and the V2 text line (V2 has a "-# " prefix).
+// "<@quotedBy> quoted <@author> from **#channel** [link ↗](<url>)"  (V2, has link)
+// "<@quotedBy> quoted <@author> from **#channel**"                  (V1, no link)
+// The link segment is now optional so one regex covers both formats, plus any
+// older V1 messages sent before the link was removed from the text.
 const QUOTE_LINE_CAPTURE_REGEX =
-	/^(?:-#\s)?<@!?\d+>\squoted\s(<@!?\d+>)\sfrom\s\*\*#(.+?)\*\*\s\[link ↗\]\(<(.+?)>\)$/;
+	/^(?:-#\s)?<@!?\d+>\squoted\s(<@!?\d+>)\sfrom\s\*\*#(.+?)\*\*(?:\s\[link ↗\]\(<(.+?)>\))?$/;
 
-const parseOriginalQuoteInfo = (text: string): OriginalQuoteInfo | null => {
+const parseQuoteLine = (
+	text: string
+): { authorMention: string; channelName: string; jumpLink?: string } | null => {
 	const match = QUOTE_LINE_CAPTURE_REGEX.exec(text);
 	if (!match) return null;
 	const [, authorMention, channelName, jumpLink] = match;
 	return { authorMention, channelName, jumpLink };
 };
 
-const buildQuoteLine = (quotedBy: User, info: OriginalQuoteInfo): string =>
+const buildQuoteLine = (
+	quotedBy: User,
+	info: OriginalQuoteInfo,
+	includeLink: boolean
+): string =>
 	truncate(
-		`${quotedBy} quoted ${info.authorMention} from **#${info.channelName}** [link ↗](<${info.jumpLink}>)`,
+		includeLink
+			? `${quotedBy} quoted ${info.authorMention} from **#${info.channelName}** [link ↗](<${info.jumpLink}>)`
+			: `${quotedBy} quoted ${info.authorMention} from **#${info.channelName}**`,
 		FIELD_VALUE_LIMIT
 	);
+
+const findExistingJumpButtonUrl = (message: Message): string | null => {
+	for (const row of message.components) {
+		if (row.type !== ComponentType.ActionRow) continue;
+		for (const component of row.components) {
+			if (
+				component.type === ComponentType.Button &&
+				component.style === ButtonStyle.Link &&
+				component.label === JUMP_BUTTON_LABEL
+			) {
+				return component.url ?? null;
+			}
+		}
+	}
+	return null;
+};
 
 export const createQuoteEmbed = ({
 	quotedMessage,
@@ -66,11 +97,6 @@ export const createQuoteEmbed = ({
 	const isV2 = quotedMessage.flags.has(MessageFlags.IsComponentsV2);
 
 	// Case 1: Components V2 message
-	// Can't mix with embeds/content at all. Just forward the components and
-	// append a small text line for attribution.
-	// Caveat: any component media using `attachment://filename` refs will break,
-	// since we aren't re-uploading the original files under those names. Only
-	// components pointing at real CDN urls survive the requote intact.
 	if (isV2) {
 		const components = quotedMessage.components.map((c) => c.toJSON());
 
@@ -82,17 +108,19 @@ export const createQuoteEmbed = ({
 				? (components[existingLineIndex] as { content: string }).content
 				: null;
 
-		// If quotedMessage is itself a quote, pull the *original* author/link
-		// out of its attribution line instead of using quotedMessage's own
-		// url/author — otherwise every re-quote would drift to point at the
-		// previous requote instead of the true source.
-		const originalInfo =
-			existingContent !== null
-				? (parseOriginalQuoteInfo(existingContent) ?? freshInfo)
-				: freshInfo;
+		const parsed =
+			existingContent !== null ? parseQuoteLine(existingContent) : null;
+
+		const originalInfo: OriginalQuoteInfo = parsed
+			? {
+					authorMention: parsed.authorMention,
+					channelName: parsed.channelName,
+					jumpLink: parsed.jumpLink ?? freshInfo.jumpLink,
+				}
+			: freshInfo;
 
 		const attributionLine = new TextDisplayBuilder()
-			.setContent(`-# ${buildQuoteLine(quotedBy, originalInfo)}`)
+			.setContent(`-# ${buildQuoteLine(quotedBy, originalInfo, true)}`)
 			.toJSON();
 
 		if (existingLineIndex !== -1) {
@@ -116,6 +144,7 @@ export const createQuoteEmbed = ({
 	);
 
 	let embeds = quotedMessage.embeds
+		.filter((e) => e.data.type === "rich")
 		.slice(0, 9) // leave room for our wrapper, max 10 embeds/message
 		.map((e) => EmbedBuilder.from(e));
 
@@ -123,7 +152,7 @@ export const createQuoteEmbed = ({
 	let existingField: APIEmbedField | null = null;
 	for (const embed of embeds) {
 		const found = embed.data.fields?.find(
-			(f) => /^quoted by$/i.test(f.name) && parseOriginalQuoteInfo(f.value)
+			(f) => /^quoted by$/i.test(f.name) && parseQuoteLine(f.value)
 		);
 		if (found) {
 			existingField = found;
@@ -131,13 +160,25 @@ export const createQuoteEmbed = ({
 		}
 	}
 
-	const originalInfo = existingField
-		? (parseOriginalQuoteInfo(existingField.value) as OriginalQuoteInfo)
+	const parsedField = existingField
+		? parseQuoteLine(existingField.value)
+		: null;
+
+	// Recover link from the existing jump button, if present, otherwise fall back to the parsed field or fresh info.
+	const originalInfo: OriginalQuoteInfo = parsedField
+		? {
+				authorMention: parsedField.authorMention,
+				channelName: parsedField.channelName,
+				jumpLink:
+					findExistingJumpButtonUrl(quotedMessage) ??
+					parsedField.jumpLink ??
+					freshInfo.jumpLink,
+			}
 		: freshInfo;
 
 	const quotedByField: APIEmbedField = {
 		name: "Quoted by",
-		value: buildQuoteLine(quotedBy, originalInfo),
+		value: buildQuoteLine(quotedBy, originalInfo, false),
 		inline: false,
 	};
 
@@ -146,7 +187,7 @@ export const createQuoteEmbed = ({
 		// else (original author/description/image/timestamp) untouched.
 		existingField.value = quotedByField.value;
 	} else {
-		// First-time quote: build the wrapper/annotation as usual.
+		// First-time quote: build the wrapper/annotation.
 		const authorOptions = {
 			name: quotedMessage.author.username,
 			iconURL: quotedMessage.author.displayAvatarURL({ size: 64 }),
@@ -160,9 +201,7 @@ export const createQuoteEmbed = ({
 		const hasAttachments = attachmentUrls.length > 0;
 		const hasStickers = quotedMessage.stickers.size > 0;
 
-		if (hasContent || (!hasEmbeds && !hasAttachments && !hasStickers)) {
-			// Text present, OR message is genuinely empty (edge case). Build a
-			// wrapper embed so we always have something valid to send.
+		if (hasContent || hasStickers || (!hasEmbeds && !hasAttachments)) {
 			const wrapper = stampAsQuote(new EmbedBuilder()).setDescription(
 				hasContent
 					? truncate(quotedMessage.content, EMBED_DESC_LIMIT)
@@ -173,12 +212,8 @@ export const createQuoteEmbed = ({
 			if (firstImage) wrapper.setImage(firstImage.url);
 			embeds = [wrapper, ...embeds];
 		} else if (hasEmbeds) {
-			// No text, but the original had its own embed(s). Annotate the
-			// first one instead of adding a redundant wrapper.
 			embeds[0] = stampAsQuote(embeds[0]);
 		} else {
-			// No content, no embeds, just attachment(s). Attribution has to
-			// live in its own small embed since there's nothing to annotate.
 			embeds = [
 				stampAsQuote(new EmbedBuilder()).setImage(firstImage?.url ?? null),
 			];
@@ -194,6 +229,14 @@ export const createQuoteEmbed = ({
 	return {
 		allowedMentions: { parse: [] },
 		embeds: embeds.length > 0 ? embeds : undefined,
+		components: [
+			new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+				new ButtonBuilder()
+					.setURL(originalInfo.jumpLink)
+					.setLabel(JUMP_BUTTON_LABEL)
+					.setStyle(ButtonStyle.Link)
+			),
+		],
 		files: filesToSend.length > 0 ? filesToSend : undefined,
 		reply,
 	};
