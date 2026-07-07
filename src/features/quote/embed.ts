@@ -72,12 +72,10 @@ const findExistingJumpButtonUrl = (message: Message): string | null => {
 export const createQuoteEmbed = ({
 	quotedMessage,
 	quotedBy,
-	referenceMessageId,
 }: {
 	quotedMessage: Message;
 	quotedBy: User;
-	referenceMessageId?: string;
-}): MessageCreateOptions => {
+}): MessageCreateOptions | null => {
 	const channelName = !quotedMessage.channel.isDMBased()
 		? quotedMessage.channel.name
 		: "Direct Message";
@@ -89,10 +87,6 @@ export const createQuoteEmbed = ({
 		channelName,
 		jumpLink: quotedMessage.url,
 	};
-
-	const reply = referenceMessageId
-		? { messageReference: referenceMessageId }
-		: undefined;
 
 	const isV2 = quotedMessage.flags.has(MessageFlags.IsComponentsV2);
 
@@ -133,7 +127,6 @@ export const createQuoteEmbed = ({
 			allowedMentions: { parse: [] },
 			components,
 			flags: MessageFlags.IsComponentsV2,
-			reply,
 		};
 	}
 
@@ -201,6 +194,10 @@ export const createQuoteEmbed = ({
 		const hasAttachments = attachmentUrls.length > 0;
 		const hasStickers = quotedMessage.stickers.size > 0;
 
+		if (!hasContent && !hasStickers && !hasEmbeds && !hasAttachments) {
+			return null;
+		}
+
 		if (hasContent || hasStickers || (!hasEmbeds && !hasAttachments)) {
 			const wrapper = stampAsQuote(new EmbedBuilder()).setDescription(
 				hasContent
@@ -238,6 +235,5 @@ export const createQuoteEmbed = ({
 			),
 		],
 		files: filesToSend.length > 0 ? filesToSend : undefined,
-		reply,
 	};
 };

@@ -48,26 +48,35 @@ export const quoteReceived = createEvent(
 			.replace(messageLinkRegex, "")
 			.trim();
 		const isLinksOnly = messageWithLinks.content.length === 0;
-		const shouldDelete = isLinksOnly && validQuotedMessages.length > 0;
+
+		const embedOptions = validQuotedMessages.map((quotedMessage) =>
+			createQuoteEmbed({ quotedMessage, quotedBy: messageWithLinks.author })
+		);
+
+		const renderableEmbeds = embedOptions.flatMap((e) =>
+			e !== null ? [e] : []
+		);
+		const shouldDelete = isLinksOnly && renderableEmbeds.length > 0;
+
 		if (shouldDelete) {
 			try {
 				void messageWithLinks.delete();
 			} catch {}
 		}
 
+		if (renderableEmbeds.length === 0) return;
+
+		const referenceMessageId =
+			messageWithLinks.reference?.messageId ||
+			(shouldDelete ? undefined : messageWithLinks.id);
+
 		const channel = messageWithLinks.channel;
 		await Promise.all(
-			validQuotedMessages.map((quotedMessage, index) =>
+			renderableEmbeds.map((options, i) =>
 				channel.send(
-					createQuoteEmbed({
-						quotedMessage,
-						quotedBy: messageWithLinks.author,
-						referenceMessageId:
-							index === 0
-								? messageWithLinks.reference?.messageId ||
-									(shouldDelete ? undefined : messageWithLinks.id)
-								: undefined,
-					})
+					i === 0 && referenceMessageId
+						? { ...options, reply: { messageReference: referenceMessageId } }
+						: options
 				)
 			)
 		);
