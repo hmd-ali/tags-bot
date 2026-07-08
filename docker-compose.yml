@@ -1,6 +1,6 @@
 services:
   bot:
-    image: ghcr.io/${IMAGE_NAME}:latest
+    image: ghcr.io/${IMAGE_NAME}:${IMAGE_TAG:-latest}
     container_name: discord-bot
     restart: unless-stopped
     environment:
@@ -16,7 +16,7 @@ services:
         max-file: "3"
 
   migrate:
-    image: ghcr.io/${IMAGE_NAME}:latest
+    image: ghcr.io/${IMAGE_NAME}:${IMAGE_TAG:-latest}
     environment:
       - DATABASE_URL=file:/app/data/db.sqlite
     env_file:
