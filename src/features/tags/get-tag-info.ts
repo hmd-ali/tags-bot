@@ -3,6 +3,7 @@ import {
 	Colors,
 	ContainerBuilder,
 	MessageFlags,
+	time,
 } from "discord.js";
 import { basicMessage } from "@/util/components/basic-message.js";
 import { getTagPrimaryAlias } from "@/util/tags.js";
@@ -41,7 +42,7 @@ export const getTagInfoCommandHandler = async (
 		.addSeparatorComponents((separator) => separator.setDivider(true))
 		.addTextDisplayComponents((textDisplay) =>
 			textDisplay.setContent(
-				[`-# Last modified by: <@${tag.lastModifiedBy}>`].join("\n")
+				`-# Last modified by: <@${tag.lastModifiedBy}> ${time(tag.updatedAt, "R")}`
 			)
 		);
 
