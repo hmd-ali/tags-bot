@@ -1,7 +1,8 @@
+import { OptionKey } from "@generated/prisma/enums.js";
 import { Events, type MessageCreateOptions } from "discord.js";
 import { createEvent } from "@/common/events/create-event.js";
+import { getBotOption } from "@/options.js";
 import { stripAllCode } from "@/util/strip-code.js";
-import { getTagPrefix } from "@/util/tag-prefix.js";
 import { TagService } from "./tag-service.js";
 
 export const tagReceivedEvent = createEvent(
@@ -11,7 +12,7 @@ export const tagReceivedEvent = createEvent(
 	async (message) => {
 		if (message.author.bot || message.author.system) return;
 
-		const prefix = getTagPrefix();
+		const prefix = getBotOption(OptionKey.TAG_PREFIX).value;
 		const tagRegex = new RegExp(
 			`(?:^|\\s)${prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([a-zA-Z][\\w-]*)`
 		);

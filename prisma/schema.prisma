@@ -12,9 +12,14 @@ datasource db {
   provider = "sqlite"
 }
 
+enum OptionKey {
+  TAG_PREFIX
+  MAX_TAGS_PER_MESSAGE
+}
+
 model Options {
-  id    Int    @id @default(autoincrement())
-  key   String @unique
+  id    Int       @id @default(autoincrement())
+  key   OptionKey @unique
   value String
 
   @@map("options")
@@ -45,4 +50,13 @@ model TagAlias {
 
   @@index([tagId])
   @@map("tag_aliases")
+}
+
+model UserBotMessages {
+  id        String @id
+  userId    String
+  channelId String
+
+  @@index([userId, channelId])
+  @@map("user_bot_messages")
 }

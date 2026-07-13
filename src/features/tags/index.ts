@@ -8,9 +8,7 @@ import {
 	registerAutocompleteInteraction,
 } from "@/common/interactions/autocomplete-interaction.js";
 import { prisma } from "@/db/prisma.js";
-import { changeTagsPrefix } from "./change-prefix.js";
 import { createTagCommandHandler } from "./create-tag.js";
-import { currentPrefix } from "./current-prefix.js";
 import { deleteTagCommandHandler } from "./delete-tag.js";
 import { editTagCommandHandler } from "./edit-tag.js";
 import { getTagInfoCommandHandler } from "./get-tag-info.js";
@@ -88,24 +86,6 @@ export const tagCommand = createSlashCommand({
 					},
 				],
 			},
-			{
-				name: "change-prefix",
-				type: ApplicationCommandOptionType.Subcommand,
-				description: "Set the tag prefix for this server",
-				options: [
-					{
-						name: "prefix",
-						type: ApplicationCommandOptionType.String,
-						description: "The new tag prefix (e.g. $)",
-						required: true,
-					},
-				],
-			},
-			{
-				name: "current-prefix",
-				type: ApplicationCommandOptionType.Subcommand,
-				description: "Check the current tag prefix for this server",
-			},
 		],
 	},
 	async execute(interaction) {
@@ -116,8 +96,6 @@ export const tagCommand = createSlashCommand({
 			list: listTagsCommandHandler,
 			top: topTagsCommandHandler,
 			delete: deleteTagCommandHandler,
-			"change-prefix": changeTagsPrefix,
-			"current-prefix": currentPrefix,
 			info: getTagInfoCommandHandler,
 		};
 

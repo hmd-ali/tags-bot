@@ -1,4 +1,8 @@
-import type { Tag, TagAlias } from "@generated/prisma/client.js";
+import {
+	OptionKey,
+	type Tag,
+	type TagAlias,
+} from "@generated/prisma/client.js";
 import type { TagWhereInput } from "@generated/prisma/models.js";
 import {
 	ActionRowBuilder,
@@ -19,8 +23,8 @@ import {
 	registerButtonSubmitInteraction,
 } from "@/common/interactions/button-interaction.js";
 import { prisma } from "@/db/prisma.js";
+import { getBotOption } from "@/options.js";
 import { customId, parseCustomId } from "@/util/custom-id.js";
-import { getTagPrefix } from "@/util/tag-prefix.js";
 import { getTagPrimaryAlias } from "@/util/tags.js";
 import { truncate } from "@/util/truncate.js";
 
@@ -85,10 +89,9 @@ export const buildListTagsComponents = (
 		.addSeparatorComponents(new SeparatorBuilder())
 		.addTextDisplayComponents(
 			new TextDisplayBuilder().setContent(
-				`-# Total tags: ${totalCount} | Prefix: ${getTagPrefix()}`
+				`-# Total tags: ${totalCount} | Prefix: ${getBotOption(OptionKey.TAG_PREFIX)}`
 			)
 		);
-
 	const actionRow =
 		new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
 			new ButtonBuilder()
