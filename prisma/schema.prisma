@@ -53,10 +53,12 @@ model TagAlias {
 }
 
 model UserBotMessages {
-  id        String @id
+  id        String   @id
   userId    String
   channelId String
+  expiresAt DateTime @default(dbgenerated("(datetime('now', '+7 days'))"))
 
+  @@index([expiresAt])
   @@index([userId, channelId])
   @@map("user_bot_messages")
 }
