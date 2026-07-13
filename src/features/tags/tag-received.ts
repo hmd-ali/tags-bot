@@ -1,7 +1,9 @@
+import { OptionKey } from "@generated/prisma/enums.js";
 import { Events, type MessageCreateOptions } from "discord.js";
 import { createEvent } from "@/common/events/create-event.js";
+import { getBotOption } from "@/options.js";
+import { addUserBotMessage } from "@/services/user-bot-messages/add-user-bot-message.js";
 import { stripAllCode } from "@/util/strip-code.js";
-import { getTagPrefix } from "@/util/tag-prefix.js";
 import { TagService } from "./tag-service.js";
 
 export const tagReceivedEvent = createEvent(
@@ -11,7 +13,7 @@ export const tagReceivedEvent = createEvent(
 	async (message) => {
 		if (message.author.bot || message.author.system) return;
 
-		const prefix = getTagPrefix();
+		const prefix = getBotOption(OptionKey.TAG_PREFIX).value;
 		const tagRegex = new RegExp(
 			`(?:^|\\s)${prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([a-zA-Z][\\w-]*)`
 		);
@@ -31,6 +33,11 @@ export const tagReceivedEvent = createEvent(
 			allowedMentions: { parse: [], repliedUser: message.reference !== null },
 		};
 
-		await message.channel.send(options);
+		const sentMessage = await message.channel.send(options);
+		void addUserBotMessage({
+			messageId: sentMessage.id,
+			userId: message.author.id,
+			channelId: message.channel.id,
+		});
 	}
 );

@@ -32,7 +32,7 @@ export const editTagCommandHandler = async (
 
 	if (!canAccessTags(commandUser)) {
 		await interaction.reply({
-			components: [ErrorMessages.Tags.MissingRole],
+			components: [ErrorMessages.User.MissingRole],
 			flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
 		});
 		return;
