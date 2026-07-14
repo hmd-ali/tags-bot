@@ -23,10 +23,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Biome check
-        run: pnpm check
       - name: Prisma generate (sanity check schema)
         run: pnpm prisma:generate
+      - name: Lint
+        run: pnpm lint
+      - name: Format
+        run: pnpm fmt:check
 
       - name: Typecheck
         run: pnpm typecheck

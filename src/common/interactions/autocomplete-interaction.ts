@@ -1,27 +1,27 @@
-import type { AutocompleteInteraction } from "discord.js";
+import type { AutocompleteInteraction } from 'discord.js';
 
 export type AutoCompleteSubmitInteraction = {
-	commandName: string;
-	handler: (interaction: AutocompleteInteraction) => Promise<void> | void;
+  commandName: string;
+  handler: (interaction: AutocompleteInteraction) => Promise<void> | void;
 };
 
 export const autoCompleteInteractions = new Map<
-	string,
-	AutoCompleteSubmitInteraction
+  string,
+  AutoCompleteSubmitInteraction
 >();
 
 export const registerAutocompleteInteraction = (
-	interaction: AutoCompleteSubmitInteraction
+  interaction: AutoCompleteSubmitInteraction
 ) => {
-	console.log(
-		`Registering autocomplete interaction: ${interaction.commandName}`
-	);
-	autoCompleteInteractions.set(interaction.commandName, interaction);
+  console.log(
+    `Registering autocomplete interaction: ${interaction.commandName}`
+  );
+  autoCompleteInteractions.set(interaction.commandName, interaction);
 };
 
 export const handleAutoCompleteInteraction = async (
-	interaction: AutocompleteInteraction
+  interaction: AutocompleteInteraction
 ): Promise<void> => {
-	const { commandName } = interaction;
-	await autoCompleteInteractions.get(commandName)?.handler(interaction);
+  const { commandName } = interaction;
+  await autoCompleteInteractions.get(commandName)?.handler(interaction);
 };

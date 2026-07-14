@@ -1,27 +1,27 @@
 import {
-	ActionRowBuilder,
-	type APIEmbedField,
-	ButtonBuilder,
-	ButtonStyle,
-	ComponentType,
-	EmbedBuilder,
-	type Message,
-	type MessageActionRowComponentBuilder,
-	type MessageCreateOptions,
-	MessageFlags,
-	TextDisplayBuilder,
-	type User,
-} from "discord.js";
-import { truncate } from "@/util/truncate.js";
+  ActionRowBuilder,
+  type APIEmbedField,
+  ButtonBuilder,
+  ButtonStyle,
+  ComponentType,
+  EmbedBuilder,
+  type Message,
+  type MessageActionRowComponentBuilder,
+  type MessageCreateOptions,
+  MessageFlags,
+  TextDisplayBuilder,
+  type User,
+} from 'discord.js';
+import { truncate } from '@/util/truncate.js';
 
 const EMBED_DESC_LIMIT = 4096;
 const FIELD_VALUE_LIMIT = 1024;
-const JUMP_BUTTON_LABEL = "Jump to message";
+const JUMP_BUTTON_LABEL = 'Jump to message';
 
 type OriginalQuoteInfo = {
-	authorMention: string;
-	channelName: string;
-	jumpLink: string;
+  authorMention: string;
+  channelName: string;
+  jumpLink: string;
 };
 
 // Captures the pieces of a line we previously generated:
@@ -30,210 +30,216 @@ type OriginalQuoteInfo = {
 // The link segment is now optional so one regex covers both formats, plus any
 // older V1 messages sent before the link was removed from the text.
 const QUOTE_LINE_CAPTURE_REGEX =
-	/^(?:-#\s)?<@!?\d+>\squoted\s(<@!?\d+>)\sfrom\s\*\*#(.+?)\*\*(?:\s\[link ↗\]\(<(.+?)>\))?$/;
+  /^(?:-#\s)?<@!?\d+>\squoted\s(<@!?\d+>)\sfrom\s\*\*#(.+?)\*\*(?:\s\[link ↗\]\(<(.+?)>\))?$/;
 
 const parseQuoteLine = (
-	text: string
+  text: string
 ): { authorMention: string; channelName: string; jumpLink?: string } | null => {
-	const match = QUOTE_LINE_CAPTURE_REGEX.exec(text);
-	if (!match) return null;
-	const [, authorMention, channelName, jumpLink] = match;
-	return { authorMention, channelName, jumpLink };
+  const match = QUOTE_LINE_CAPTURE_REGEX.exec(text);
+  if (!match) {
+    return null;
+  }
+  const [, authorMention, channelName, jumpLink] = match;
+  return { authorMention, channelName, jumpLink };
 };
 
 const buildQuoteLine = (
-	quotedBy: User,
-	info: OriginalQuoteInfo,
-	includeLink: boolean
+  quotedBy: User,
+  info: OriginalQuoteInfo,
+  includeLink: boolean
 ): string =>
-	truncate(
-		includeLink
-			? `${quotedBy} quoted ${info.authorMention} from **#${info.channelName}** [link ↗](<${info.jumpLink}>)`
-			: `${quotedBy} quoted ${info.authorMention} from **#${info.channelName}**`,
-		FIELD_VALUE_LIMIT
-	);
+  truncate(
+    includeLink
+      ? `${quotedBy.toString()} quoted ${info.authorMention} from **#${info.channelName}** [link ↗](<${info.jumpLink}>)`
+      : `${quotedBy.toString()} quoted ${info.authorMention} from **#${info.channelName}**`,
+    FIELD_VALUE_LIMIT
+  );
 
 const findExistingJumpButtonUrl = (message: Message): string | null => {
-	for (const row of message.components) {
-		if (row.type !== ComponentType.ActionRow) continue;
-		for (const component of row.components) {
-			if (
-				component.type === ComponentType.Button &&
-				component.style === ButtonStyle.Link &&
-				component.label === JUMP_BUTTON_LABEL
-			) {
-				return component.url ?? null;
-			}
-		}
-	}
-	return null;
+  for (const row of message.components) {
+    if (row.type !== ComponentType.ActionRow) {
+      continue;
+    }
+    for (const component of row.components) {
+      if (
+        component.type === ComponentType.Button &&
+        component.style === ButtonStyle.Link &&
+        component.label === JUMP_BUTTON_LABEL
+      ) {
+        return component.url ?? null;
+      }
+    }
+  }
+  return null;
 };
 
 export const createQuoteEmbed = ({
-	quotedMessage,
-	quotedBy,
+  quotedMessage,
+  quotedBy,
 }: {
-	quotedMessage: Message;
-	quotedBy: User;
+  quotedMessage: Message;
+  quotedBy: User;
 }): MessageCreateOptions | null => {
-	const channelName = !quotedMessage.channel.isDMBased()
-		? quotedMessage.channel.name
-		: "Direct Message";
+  const channelName = !quotedMessage.channel.isDMBased()
+    ? quotedMessage.channel.name
+    : 'Direct Message';
 
-	// Default: quotedMessage is an original, non-quote message, so it *is*
-	// the source of truth for author/channel/link.
-	const freshInfo: OriginalQuoteInfo = {
-		authorMention: `${quotedMessage.author}`,
-		channelName,
-		jumpLink: quotedMessage.url,
-	};
+  // Default: quotedMessage is an original, non-quote message, so it *is*
+  // the source of truth for author/channel/link.
+  const freshInfo: OriginalQuoteInfo = {
+    authorMention: `${quotedMessage.author.toString()}`,
+    channelName,
+    jumpLink: quotedMessage.url,
+  };
 
-	const isV2 = quotedMessage.flags.has(MessageFlags.IsComponentsV2);
+  const isV2 = quotedMessage.flags.has(MessageFlags.IsComponentsV2);
 
-	// Case 1: Components V2 message
-	if (isV2) {
-		const components = quotedMessage.components.map((c) => c.toJSON());
+  // Case 1: Components V2 message
+  if (isV2) {
+    const components = quotedMessage.components.map((c) => c.toJSON());
 
-		const existingLineIndex = components.findIndex(
-			(c) => c.type === ComponentType.TextDisplay
-		);
-		const existingContent =
-			existingLineIndex !== -1
-				? (components[existingLineIndex] as { content: string }).content
-				: null;
+    const existingLineIndex = components.findIndex(
+      (c) => c.type === ComponentType.TextDisplay
+    );
+    const existingContent =
+      existingLineIndex !== -1
+        ? (components[existingLineIndex] as { content: string }).content
+        : null;
 
-		const parsed =
-			existingContent !== null ? parseQuoteLine(existingContent) : null;
+    const parsed =
+      existingContent !== null ? parseQuoteLine(existingContent) : null;
 
-		const originalInfo: OriginalQuoteInfo = parsed
-			? {
-					authorMention: parsed.authorMention,
-					channelName: parsed.channelName,
-					jumpLink: parsed.jumpLink ?? freshInfo.jumpLink,
-				}
-			: freshInfo;
+    const originalInfo: OriginalQuoteInfo = parsed
+      ? {
+          authorMention: parsed.authorMention,
+          channelName: parsed.channelName,
+          jumpLink: parsed.jumpLink ?? freshInfo.jumpLink,
+        }
+      : freshInfo;
 
-		const attributionLine = new TextDisplayBuilder()
-			.setContent(`-# ${buildQuoteLine(quotedBy, originalInfo, true)}`)
-			.toJSON();
+    const attributionLine = new TextDisplayBuilder()
+      .setContent(`-# ${buildQuoteLine(quotedBy, originalInfo, true)}`)
+      .toJSON();
 
-		if (existingLineIndex !== -1) {
-			components[existingLineIndex] = attributionLine;
-		} else {
-			components.push(attributionLine);
-		}
+    if (existingLineIndex !== -1) {
+      components[existingLineIndex] = attributionLine;
+    } else {
+      components.push(attributionLine);
+    }
 
-		return {
-			allowedMentions: { parse: [] },
-			components,
-			flags: MessageFlags.IsComponentsV2,
-		};
-	}
+    return {
+      allowedMentions: { parse: [] },
+      components,
+      flags: MessageFlags.IsComponentsV2,
+    };
+  }
 
-	// Case 2: Normal (V1) message
-	const attachmentUrls = quotedMessage.attachments.map((a) => a.url);
-	const firstImage = quotedMessage.attachments.find((a) =>
-		a.contentType?.startsWith("image/")
-	);
+  // Case 2: Normal (V1) message
+  const attachmentUrls = quotedMessage.attachments.map((a) => a.url);
+  const firstImage = quotedMessage.attachments.find((a) =>
+    a.contentType?.startsWith('image/')
+  );
 
-	let embeds = quotedMessage.embeds
-		.filter((e) => e.data.type === "rich")
-		.slice(0, 9) // leave room for our wrapper, max 10 embeds/message
-		.map((e) => EmbedBuilder.from(e));
+  let embeds = quotedMessage.embeds
+    .filter((e) => e.data.type === 'rich')
+    .slice(0, 9) // leave room for our wrapper, max 10 embeds/message
+    .map((e) => EmbedBuilder.from(e));
 
-	// Find an existing "Quoted by" field, if quotedMessage is itself a quote.
-	let existingField: APIEmbedField | null = null;
-	for (const embed of embeds) {
-		const found = embed.data.fields?.find(
-			(f) => /^quoted by$/i.test(f.name) && parseQuoteLine(f.value)
-		);
-		if (found) {
-			existingField = found;
-			break;
-		}
-	}
+  // Find an existing "Quoted by" field, if quotedMessage is itself a quote.
+  let existingField: APIEmbedField | null = null;
+  for (const embed of embeds) {
+    const found = embed.data.fields?.find(
+      (f) => /^quoted by$/i.test(f.name) && parseQuoteLine(f.value)
+    );
+    if (found) {
+      existingField = found;
+      break;
+    }
+  }
 
-	const parsedField = existingField
-		? parseQuoteLine(existingField.value)
-		: null;
+  const parsedField = existingField
+    ? parseQuoteLine(existingField.value)
+    : null;
 
-	// Recover link from the existing jump button, if present, otherwise fall back to the parsed field or fresh info.
-	const originalInfo: OriginalQuoteInfo = parsedField
-		? {
-				authorMention: parsedField.authorMention,
-				channelName: parsedField.channelName,
-				jumpLink:
-					findExistingJumpButtonUrl(quotedMessage) ??
-					parsedField.jumpLink ??
-					freshInfo.jumpLink,
-			}
-		: freshInfo;
+  // Recover link from the existing jump button, if present, otherwise fall back to the parsed field or fresh info.
+  const originalInfo: OriginalQuoteInfo = parsedField
+    ? {
+        authorMention: parsedField.authorMention,
+        channelName: parsedField.channelName,
+        jumpLink:
+          findExistingJumpButtonUrl(quotedMessage) ??
+          parsedField.jumpLink ??
+          freshInfo.jumpLink,
+      }
+    : freshInfo;
 
-	const quotedByField: APIEmbedField = {
-		name: "Quoted by",
-		value: buildQuoteLine(quotedBy, originalInfo, false),
-		inline: false,
-	};
+  const quotedByField: APIEmbedField = {
+    name: 'Quoted by',
+    value: buildQuoteLine(quotedBy, originalInfo, false),
+    inline: false,
+  };
 
-	if (existingField) {
-		// Already a quote: swap the field's value in place, keep everything
-		// else (original author/description/image/timestamp) untouched.
-		existingField.value = quotedByField.value;
-	} else {
-		// First-time quote: build the wrapper/annotation.
-		const authorOptions = {
-			name: quotedMessage.author.username,
-			iconURL: quotedMessage.author.displayAvatarURL({ size: 64 }),
-		};
+  if (existingField) {
+    // Already a quote: swap the field's value in place, keep everything
+    // else (original author/description/image/timestamp) untouched.
+    existingField.value = quotedByField.value;
+  } else {
+    // First-time quote: build the wrapper/annotation.
+    const authorOptions = {
+      name: quotedMessage.author.username,
+      iconURL: quotedMessage.author.displayAvatarURL({ size: 64 }),
+    };
 
-		const stampAsQuote = (embed: EmbedBuilder) =>
-			embed.setAuthor(authorOptions).addFields(quotedByField).setTimestamp();
+    const stampAsQuote = (embed: EmbedBuilder) =>
+      embed.setAuthor(authorOptions).addFields(quotedByField).setTimestamp();
 
-		const hasContent = quotedMessage.content.length > 0;
-		const hasEmbeds = embeds.length > 0;
-		const hasAttachments = attachmentUrls.length > 0;
-		const hasStickers = quotedMessage.stickers.size > 0;
+    const hasContent = quotedMessage.content.length > 0;
+    const hasEmbeds = embeds.length > 0;
+    const hasAttachments = attachmentUrls.length > 0;
+    const hasStickers = quotedMessage.stickers.size > 0;
 
-		if (!hasContent && !hasStickers && !hasEmbeds && !hasAttachments) {
-			return null;
-		}
+    if (!hasContent && !hasStickers && !hasEmbeds && !hasAttachments) {
+      return null;
+    }
 
-		if (hasContent || hasStickers || (!hasEmbeds && !hasAttachments)) {
-			const wrapper = stampAsQuote(new EmbedBuilder()).setDescription(
-				hasContent
-					? truncate(quotedMessage.content, EMBED_DESC_LIMIT)
-					: hasStickers
-						? "*sent a sticker*"
-						: null
-			);
-			if (firstImage) wrapper.setImage(firstImage.url);
-			embeds = [wrapper, ...embeds];
-		} else if (hasEmbeds) {
-			embeds[0] = stampAsQuote(embeds[0]);
-		} else {
-			embeds = [
-				stampAsQuote(new EmbedBuilder()).setImage(firstImage?.url ?? null),
-			];
-		}
-	}
+    if (hasContent || hasStickers || (!hasEmbeds && !hasAttachments)) {
+      const wrapper = stampAsQuote(new EmbedBuilder()).setDescription(
+        hasContent
+          ? truncate(quotedMessage.content, EMBED_DESC_LIMIT)
+          : hasStickers
+            ? '*sent a sticker*'
+            : null
+      );
+      if (firstImage) {
+        wrapper.setImage(firstImage.url);
+      }
+      embeds = [wrapper, ...embeds];
+    } else if (hasEmbeds) {
+      embeds[0] = stampAsQuote(embeds[0]);
+    } else {
+      embeds = [
+        stampAsQuote(new EmbedBuilder()).setImage(firstImage?.url ?? null),
+      ];
+    }
+  }
 
-	// Don't re-send the image we already used as the embed's setImage,
-	// otherwise it shows up twice.
-	const filesToSend = firstImage
-		? attachmentUrls.filter((url) => url !== firstImage.url)
-		: attachmentUrls;
+  // Don't re-send the image we already used as the embed's setImage,
+  // otherwise it shows up twice.
+  const filesToSend = firstImage
+    ? attachmentUrls.filter((url) => url !== firstImage.url)
+    : attachmentUrls;
 
-	return {
-		allowedMentions: { parse: [] },
-		embeds: embeds.length > 0 ? embeds : undefined,
-		components: [
-			new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
-				new ButtonBuilder()
-					.setURL(originalInfo.jumpLink)
-					.setLabel(JUMP_BUTTON_LABEL)
-					.setStyle(ButtonStyle.Link)
-			),
-		],
-		files: filesToSend.length > 0 ? filesToSend : undefined,
-	};
+  return {
+    allowedMentions: { parse: [] },
+    embeds: embeds.length > 0 ? embeds : undefined,
+    components: [
+      new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+        new ButtonBuilder()
+          .setURL(originalInfo.jumpLink)
+          .setLabel(JUMP_BUTTON_LABEL)
+          .setStyle(ButtonStyle.Link)
+      ),
+    ],
+    files: filesToSend.length > 0 ? filesToSend : undefined,
+  };
 };
