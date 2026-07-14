@@ -1,5 +1,5 @@
 import type { ClientEvents, Events, GuildMember } from "discord.js";
-import { deleteUserBotMessage } from "@/services/user-bot-messages/delete-user-bot-message.js";
+import { UserBotMessagesService } from "@/services/user-bot-messages/user-bot-messages-service.js";
 
 export const removeUserBotMessage: (
 	...args: ClientEvents[Events.MessageReactionAdd]
@@ -20,7 +20,7 @@ export const removeUserBotMessage: (
 		return;
 	}
 	try {
-		const deleted = await deleteUserBotMessage({
+		const deleted = await UserBotMessagesService.deleteUserBotMessage({
 			messageId: reaction.message.id,
 			user: member,
 		});

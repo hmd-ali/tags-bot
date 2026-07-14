@@ -1,30 +1,10 @@
 import type { Tag, TagAlias } from "@generated/prisma/client.js";
-import { LRUCache } from "lru-cache/raw";
 import { prisma } from "@/db/prisma.js";
+import { BY_ID, BY_NAME, evict, store } from "./tag-cache.js";
 
 type FullTag = Tag & { aliases: TagAlias[] };
 
-const BY_NAME = new LRUCache<string, FullTag>({
-	max: 500,
-	ttl: 1000 * 60 * 10,
-});
-const BY_ID = new LRUCache<number, FullTag>({ max: 500, ttl: 1000 * 60 * 10 });
-
 const include = { aliases: true } as const;
-
-function store(tag: FullTag): void {
-	BY_ID.set(tag.id, tag);
-	for (const alias of tag.aliases) {
-		BY_NAME.set(alias.name, tag);
-	}
-}
-
-function evict(tag: FullTag): void {
-	BY_ID.delete(tag.id);
-	for (const alias of tag.aliases) {
-		BY_NAME.delete(alias.name);
-	}
-}
 
 export const TagService = {
 	async getByName(name: string): Promise<FullTag | null> {
@@ -95,6 +75,7 @@ export const TagService = {
 					content: data.content,
 					desc: data.desc,
 					lastModifiedBy: data.userId,
+					updatedAt: new Date(),
 				},
 			}),
 			prisma.tagAlias.deleteMany({
@@ -107,39 +88,6 @@ export const TagService = {
 				})),
 			}),
 		]);
-
-		const tag = await prisma.tag.findUnique({
-			where: { id: existing.id },
-			include,
-		});
-		if (tag) store(tag);
-		return tag;
-	},
-
-	async addAlias(tagId: number, name: string): Promise<FullTag | null> {
-		const existing = await this.getById(tagId);
-		if (!existing) return null;
-
-		evict(existing);
-
-		await prisma.tagAlias.create({ data: { name, tagId } });
-
-		const tag = await prisma.tag.findUnique({ where: { id: tagId }, include });
-		if (tag) store(tag);
-		return tag;
-	},
-
-	async removeAlias(name: string): Promise<FullTag | null> {
-		const existing = await this.getByName(name);
-		if (!existing) return null;
-
-		if (existing.aliases.length <= 1) {
-			throw new Error("Cannot remove the last alias of a tag.");
-		}
-
-		evict(existing);
-
-		await prisma.tagAlias.delete({ where: { name } });
 
 		const tag = await prisma.tag.findUnique({
 			where: { id: existing.id },
@@ -179,24 +127,5 @@ export const TagService = {
 			store(tag);
 		}
 		return tags;
-	},
-
-	async transferOwnership(
-		tagId: number,
-		newOwnerId: string
-	): Promise<FullTag | null> {
-		const existing = await this.getById(tagId);
-		if (!existing) return null;
-
-		evict(existing);
-
-		const updatedTag = await prisma.tag.update({
-			where: { id: tagId },
-			data: { userId: newOwnerId },
-			include,
-		});
-
-		store(updatedTag);
-		return updatedTag;
 	},
 };

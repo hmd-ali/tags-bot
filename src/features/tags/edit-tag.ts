@@ -13,6 +13,7 @@ import {
 } from "@/common/interactions/modal-interaction.js";
 import { prisma } from "@/db/prisma.js";
 import { ErrorMessages } from "@/error-messages/index.js";
+import { TagService } from "@/services/tags/TagService.js";
 import {
 	basicErrorMessage,
 	basicMessage,
@@ -21,7 +22,6 @@ import { customId, parseCustomId } from "@/util/custom-id.js";
 import { isValidTagName } from "@/util/tags.js";
 import { getCommandUser } from "@/util/user.js";
 import { canAccessTags } from "./permissions.js";
-import { TagService } from "./tag-service.js";
 
 const BASE_NAME = "tags-edit";
 
