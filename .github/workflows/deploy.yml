@@ -5,9 +5,9 @@ on:
   workflow_dispatch:
     inputs:
       rollback_tag:
-        description: "Image tag to redeploy (e.g. sha-abc1234). Leave blank for latest."
+        description: 'Image tag to redeploy (e.g. sha-abc1234). Leave blank for latest.'
         required: false
-        default: ""
+        default: ''
 
 env:
   REGISTRY: ghcr.io
