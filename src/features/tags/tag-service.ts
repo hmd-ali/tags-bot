@@ -95,6 +95,7 @@ export const TagService = {
 					content: data.content,
 					desc: data.desc,
 					lastModifiedBy: data.userId,
+					updatedAt: new Date(),
 				},
 			}),
 			prisma.tagAlias.deleteMany({
@@ -107,39 +108,6 @@ export const TagService = {
 				})),
 			}),
 		]);
-
-		const tag = await prisma.tag.findUnique({
-			where: { id: existing.id },
-			include,
-		});
-		if (tag) store(tag);
-		return tag;
-	},
-
-	async addAlias(tagId: number, name: string): Promise<FullTag | null> {
-		const existing = await this.getById(tagId);
-		if (!existing) return null;
-
-		evict(existing);
-
-		await prisma.tagAlias.create({ data: { name, tagId } });
-
-		const tag = await prisma.tag.findUnique({ where: { id: tagId }, include });
-		if (tag) store(tag);
-		return tag;
-	},
-
-	async removeAlias(name: string): Promise<FullTag | null> {
-		const existing = await this.getByName(name);
-		if (!existing) return null;
-
-		if (existing.aliases.length <= 1) {
-			throw new Error("Cannot remove the last alias of a tag.");
-		}
-
-		evict(existing);
-
-		await prisma.tagAlias.delete({ where: { name } });
 
 		const tag = await prisma.tag.findUnique({
 			where: { id: existing.id },
@@ -179,24 +147,5 @@ export const TagService = {
 			store(tag);
 		}
 		return tags;
-	},
-
-	async transferOwnership(
-		tagId: number,
-		newOwnerId: string
-	): Promise<FullTag | null> {
-		const existing = await this.getById(tagId);
-		if (!existing) return null;
-
-		evict(existing);
-
-		const updatedTag = await prisma.tag.update({
-			where: { id: tagId },
-			data: { userId: newOwnerId },
-			include,
-		});
-
-		store(updatedTag);
-		return updatedTag;
 	},
 };
