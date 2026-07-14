@@ -2,8 +2,8 @@ import { OptionKey } from "@generated/prisma/enums.js";
 import { Events, type MessageCreateOptions } from "discord.js";
 import { createEvent } from "@/common/events/create-event.js";
 import { getBotOption } from "@/options.js";
-import { TagService } from "@/services/tags/TagService.js";
-import { addUserBotMessage } from "@/services/user-bot-messages/add-user-bot-message.js";
+import { TagService } from "@/services/tags/tag-service.js";
+import { UserBotMessagesService } from "@/services/user-bot-messages/user-bot-messages-service.js";
 import { stripAllCode } from "@/util/strip-code.js";
 
 export const tagReceivedEvent = createEvent(
@@ -34,7 +34,7 @@ export const tagReceivedEvent = createEvent(
 		};
 
 		const sentMessage = await message.channel.send(options);
-		void addUserBotMessage({
+		void UserBotMessagesService.addUserBotMessage({
 			messageId: sentMessage.id,
 			userId: message.author.id,
 			channelId: message.channel.id,

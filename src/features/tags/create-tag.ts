@@ -13,7 +13,7 @@ import {
 } from "@/common/interactions/modal-interaction.js";
 import { prisma } from "@/db/prisma.js";
 import { ErrorMessages } from "@/error-messages/index.js";
-import { TagService } from "@/services/tags/TagService.js";
+import { TagService } from "@/services/tags/tag-service.js";
 import { basicMessage } from "@/util/components/basic-message.js";
 import { customId } from "@/util/custom-id.js";
 import { getTagPrimaryAlias, isValidTagName } from "@/util/tags.js";

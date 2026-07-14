@@ -1,6 +1,6 @@
 import { Events } from "discord.js";
 import { createEvent } from "@/common/events/create-event.js";
-import { startExpiredMessageCleanup } from "@/services/user-bot-messages/cleanup.js";
+import { UserBotMessagesService } from "@/services/user-bot-messages/user-bot-messages-service.js";
 
 export const readyEvent = createEvent(
 	{
@@ -8,7 +8,7 @@ export const readyEvent = createEvent(
 		once: true,
 	},
 	async (client) => {
-		startExpiredMessageCleanup();
+		UserBotMessagesService.startExpiredMessageCleanup();
 		console.log(`Logged in as ${client.user.tag}`);
 	}
 );

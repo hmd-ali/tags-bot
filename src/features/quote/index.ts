@@ -1,6 +1,6 @@
 import { Events, type Message } from "discord.js";
 import { createEvent } from "@/common/events/create-event.js";
-import { addUserBotMessage } from "@/services/user-bot-messages/add-user-bot-message.js";
+import { UserBotMessagesService } from "@/services/user-bot-messages/user-bot-messages-service.js";
 import { createQuoteEmbed } from "./embed.js";
 
 export const quoteReceived = createEvent(
@@ -79,7 +79,7 @@ export const quoteReceived = createEvent(
 						? { ...options, reply: { messageReference: referenceMessageId } }
 						: options
 				);
-				void addUserBotMessage({
+				void UserBotMessagesService.addUserBotMessage({
 					messageId: sentMessage.id,
 					userId: messageWithLinks.author.id,
 					channelId: messageWithLinks.channel.id,

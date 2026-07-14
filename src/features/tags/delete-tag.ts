@@ -1,6 +1,6 @@
 import { type ChatInputCommandInteraction, MessageFlags } from "discord.js";
 import { ErrorMessages } from "@/error-messages/index.js";
-import { TagService } from "@/services/tags/TagService.js";
+import { TagService } from "@/services/tags/tag-service.js";
 import {
 	basicErrorMessage,
 	basicMessage,
