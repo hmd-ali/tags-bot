@@ -5,9 +5,9 @@ import {
 	MessageFlags,
 	TextDisplayBuilder,
 } from "discord.js";
+import { TagService } from "@/services/tags/TagService.js";
 import { basicMessage } from "@/util/components/basic-message.js";
 import { getTagPrimaryAlias } from "@/util/tags.js";
-import { TagService } from "./tag-service.js";
 
 export const topTagsCommandHandler = async (
 	interaction: ChatInputCommandInteraction

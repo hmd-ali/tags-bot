@@ -1,30 +1,10 @@
 import type { Tag, TagAlias } from "@generated/prisma/client.js";
-import { LRUCache } from "lru-cache/raw";
 import { prisma } from "@/db/prisma.js";
+import { BY_ID, BY_NAME, evict, store } from "./tag-cache.js";
 
 type FullTag = Tag & { aliases: TagAlias[] };
 
-const BY_NAME = new LRUCache<string, FullTag>({
-	max: 500,
-	ttl: 1000 * 60 * 10,
-});
-const BY_ID = new LRUCache<number, FullTag>({ max: 500, ttl: 1000 * 60 * 10 });
-
 const include = { aliases: true } as const;
-
-function store(tag: FullTag): void {
-	BY_ID.set(tag.id, tag);
-	for (const alias of tag.aliases) {
-		BY_NAME.set(alias.name, tag);
-	}
-}
-
-function evict(tag: FullTag): void {
-	BY_ID.delete(tag.id);
-	for (const alias of tag.aliases) {
-		BY_NAME.delete(alias.name);
-	}
-}
 
 export const TagService = {
 	async getByName(name: string): Promise<FullTag | null> {

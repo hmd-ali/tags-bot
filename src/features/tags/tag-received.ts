@@ -2,9 +2,9 @@ import { OptionKey } from "@generated/prisma/enums.js";
 import { Events, type MessageCreateOptions } from "discord.js";
 import { createEvent } from "@/common/events/create-event.js";
 import { getBotOption } from "@/options.js";
+import { TagService } from "@/services/tags/TagService.js";
 import { addUserBotMessage } from "@/services/user-bot-messages/add-user-bot-message.js";
 import { stripAllCode } from "@/util/strip-code.js";
-import { TagService } from "./tag-service.js";
 
 export const tagReceivedEvent = createEvent(
 	{

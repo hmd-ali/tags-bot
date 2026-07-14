@@ -1,5 +1,6 @@
 import { type ChatInputCommandInteraction, MessageFlags } from "discord.js";
 import { ErrorMessages } from "@/error-messages/index.js";
+import { TagService } from "@/services/tags/TagService.js";
 import {
 	basicErrorMessage,
 	basicMessage,
@@ -7,7 +8,6 @@ import {
 import { getTagPrimaryAlias } from "@/util/tags.js";
 import { getCommandUser } from "@/util/user.js";
 import { canAccessTags } from "./permissions.js";
-import { TagService } from "./tag-service.js";
 
 export const deleteTagCommandHandler = async (
 	interaction: ChatInputCommandInteraction
