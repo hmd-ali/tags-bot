@@ -20,7 +20,7 @@ const client = new Client({
 
 loadEvents(client);
 
-client.login(env.discord.token);
+void client.login(env.discord.token);
 await initBotOptions();
 
 process.on('SIGINT', async () => {
