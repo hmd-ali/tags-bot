@@ -4,6 +4,10 @@ on:
   push:
     branches-ignore: [main]
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -17,7 +21,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: '.nvmrc'
           cache: pnpm
 
       - name: Install dependencies
@@ -25,8 +29,10 @@ jobs:
 
       - name: Prisma generate (sanity check schema)
         run: pnpm prisma:generate
+
       - name: Lint
         run: pnpm lint
+
       - name: Format
         run: pnpm fmt:check
 

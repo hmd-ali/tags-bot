@@ -18,9 +18,42 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  lint:
+    name: Lint & Format Check
+    runs-on: ubuntu-latest
+    if: github.event.inputs.rollback_tag == '' || github.event.inputs.rollback_tag == null
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Prisma generate (sanity check schema)
+        run: pnpm prisma:generate
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Format
+        run: pnpm fmt:check
+
+      - name: Typecheck
+        run: pnpm typecheck
+
   build-and-push:
     name: Build & Push Image
     if: github.event.inputs.rollback_tag == '' || github.event.inputs.rollback_tag == null
+    needs: [lint]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -29,13 +62,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Biome
-        uses: biomejs/setup-biome@v2
-        with:
-          version: latest
-
-      - name: Run Biome
-        run: biome ci .
+      - name: Read Node version
+        id: node_version
+        run: echo "version=$(cat .nvmrc)" >> "$GITHUB_OUTPUT"
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -62,6 +91,8 @@ jobs:
           context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
+          build-args: |
+            NODE_VERSION=${{ steps.node_version.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
