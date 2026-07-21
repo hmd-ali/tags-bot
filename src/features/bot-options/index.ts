@@ -1,6 +1,8 @@
 import {
   type ApplicationCommandOptionChoiceData,
   ApplicationCommandOptionType,
+  PermissionFlagsBits,
+  PermissionsBitField,
 } from 'discord.js';
 import { createSlashCommand } from '@/common/commands/create-commands.js';
 import { BotOptions } from '@/options.js';
@@ -11,6 +13,9 @@ export const botOptionsCommand = createSlashCommand({
   data: {
     name: 'bot-options',
     description: 'Manage bot options',
+    default_member_permissions: new PermissionsBitField(
+      PermissionFlagsBits.ModerateMembers
+    ).toJSON(),
     options: [
       {
         name: 'set',
