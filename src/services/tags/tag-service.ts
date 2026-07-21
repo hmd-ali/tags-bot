@@ -1,6 +1,6 @@
 import type { Tag, TagAlias } from '@generated/prisma/client.js';
 import { prisma } from '@/db/prisma.js';
-import { BY_ID, BY_NAME, evict, store } from './tag-cache.js';
+import { TagsCache } from './tag-cache.js';
 
 type FullTag = Tag & { aliases: TagAlias[] };
 
@@ -8,9 +8,12 @@ const include = { aliases: true } as const;
 
 export const TagService = {
   async getByName(name: string): Promise<FullTag | null> {
-    const cached = BY_NAME.get(name);
-    if (cached) {
-      return cached;
+    const cachedTagId = TagsCache.getTagId(name);
+    if (cachedTagId !== undefined) {
+      const cached = TagsCache.getTag(cachedTagId);
+      if (cached) {
+        return cached;
+      }
     }
 
     const tag = await prisma.tag.findFirst({
@@ -19,20 +22,20 @@ export const TagService = {
     });
 
     if (tag) {
-      store(tag);
+      TagsCache.addTag(tag);
     }
     return tag;
   },
 
   async getById(id: number): Promise<FullTag | null> {
-    const cached = BY_ID.get(id);
+    const cached = TagsCache.getTag(id);
     if (cached) {
       return cached;
     }
 
     const tag = await prisma.tag.findUnique({ where: { id }, include });
     if (tag) {
-      store(tag);
+      TagsCache.addTag(tag);
     }
     return tag;
   },
@@ -54,7 +57,7 @@ export const TagService = {
       },
       include,
     });
-    store(tag);
+    TagsCache.addTag(tag);
     return tag;
   },
 
@@ -76,7 +79,7 @@ export const TagService = {
       throw new Error('Cannot update a tag to have no aliases.');
     }
 
-    evict(existing);
+    TagsCache.removeTag(existing);
 
     await prisma.$transaction([
       prisma.tag.update({
@@ -104,7 +107,7 @@ export const TagService = {
       include,
     });
     if (tag) {
-      store(tag);
+      TagsCache.addTag(tag);
     }
     return tag;
   },
@@ -115,7 +118,7 @@ export const TagService = {
       return false;
     }
 
-    evict(existing);
+    TagsCache.removeTag(existing);
 
     await prisma.tagAlias.deleteMany({ where: { tagId: id } });
     await prisma.tag.delete({ where: { id } });
@@ -128,7 +131,7 @@ export const TagService = {
       data: { uses: { increment: 1 } },
     });
 
-    const cached = BY_ID.get(id);
+    const cached = TagsCache.getTag(id);
     if (cached) {
       cached.uses += 1;
     }
@@ -140,7 +143,7 @@ export const TagService = {
       include,
     });
     for (const tag of tags) {
-      store(tag);
+      TagsCache.addTag(tag);
     }
     return tags;
   },
